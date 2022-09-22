@@ -240,7 +240,6 @@ class SpaceMouse(object):
             self.stop()
         if self.device:
             self.device.close()
-        print("SpaceMouse destructed completely")
 
     def set_position_callback(self, callback):
         """
