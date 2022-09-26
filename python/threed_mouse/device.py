@@ -224,6 +224,7 @@ class SpaceMouse(object):
         self.mappings = spec.mappings
         self.button_mapping = spec.button_mapping
         self.axis_scale = spec.axis_scale
+        self.name = spec.name
         self._control = None
 
         # Optional delegate functions that will be called to process/transform position and rotation
@@ -297,10 +298,12 @@ class SpaceMouse(object):
             try:
                 self.device.open(vendor_id, product_id)
                 opened = True
+                print(f"[spacemouse][device] Successfully connected to: {spec.name}, vendor id: { vendor_id }, product id: {product_id}")
             except OSError:
                 continue
 
         if not opened:
+            print("Unable to open specified spacemouse device. Ensure you have installed spacenavd, obtained the correct vendor_id and product_id, as well as setting up the correct udev rule and the device is plugged in. ")
             raise RuntimeError("Couldn't open device")
         # We'll use the blocking interface and rely on the timeout feature instead
         # self.device.set_nonblocking(True)
