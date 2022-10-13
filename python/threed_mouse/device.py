@@ -15,30 +15,6 @@ SpaceMouseData = namedtuple(
     "SpaceMouseData", ["t", "xyz", "rpy", "buttons"]
 )
 
-
-class ButtonState(list):
-    def __int__(self):
-        # Button state is a list of bools, so convert to a compact int bitfield representation
-        return sum((b << i) for (i, b) in enumerate(self))
-
-
-class ButtonStateStruct:
-    def __init__(self, value: int, name_to_index: Dict[str, int]):
-        """
-        Args:
-            value (int): the packed bitfield representation of the button state
-            mapping (List[str]): name of each index in the bitfield
-        """
-        self.value = value
-        self.name_to_index = name_to_index
-
-    def __getitem__(self, name: str) -> bool:
-        if name not in self.name_to_index.keys():
-            return False
-        index = self.name_to_index[name]
-        return (self.value >> index) & 1
-
-
 # axis mappings are specified as:
 # [channel, byte1, byte2, scale]; scale is usually just -1 or 1 and multiplies the result by this value
 # (but per-axis scaling can also be achieved by setting this value)
@@ -206,12 +182,6 @@ DEVICE_SPECS = {
 }
 
 DEVICE_NAMES = list(DEVICE_SPECS.keys())
-
-DEVICE_BUTTON_STRUCT_INDICES: Dict[str, Dict[str, int]] = {}
-for device_name, spec in DEVICE_SPECS.items():
-    # We use the order that the buttons are listed in the spec to define the packing arrangement for a bitfield representation
-    # of button state.
-    DEVICE_BUTTON_STRUCT_INDICES[device_name] = {name: index for index, (name, _, _, _) in enumerate(spec.button_mapping)}
 
 
 def scale_to_control(x, axis_scale):
