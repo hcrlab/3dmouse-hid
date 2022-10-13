@@ -1,6 +1,7 @@
 import time
 import threading
 from collections import namedtuple
+from typing import Dict, List
 
 import numpy as np
 
@@ -17,18 +18,24 @@ SpaceMouseData = namedtuple(
 
 class ButtonState(list):
     def __int__(self):
+        # Button state is a list of bools, so convert to a compact int bitfield representation
         return sum((b << i) for (i, b) in enumerate(self))
 
 
 class ButtonStateStruct:
-    def __init__(self, value, mapping):
+    def __init__(self, value: int, name_to_index: Dict[str, int]):
+        """
+        Args:
+            value (int): the packed bitfield representation of the button state
+            mapping (List[str]): name of each index in the bitfield
+        """
         self.value = value
-        self.mapping = mapping
+        self.name_to_index = name_to_index
 
-    def __getitem__(self, name) -> bool:
-        if name not in self.mapping:
+    def __getitem__(self, name: str) -> bool:
+        if name not in self.name_to_index.keys():
             return False
-        index = self.mapping.index(name)
+        index = self.name_to_index[name]
         return (self.value >> index) & 1
 
 
@@ -200,9 +207,11 @@ DEVICE_SPECS = {
 
 DEVICE_NAMES = list(DEVICE_SPECS.keys())
 
-DEVICE_BUTTON_STRUCT_INDICES = {}
+DEVICE_BUTTON_STRUCT_INDICES: Dict[str, Dict[str, int]] = {}
 for device_name, spec in DEVICE_SPECS.items():
-    DEVICE_BUTTON_STRUCT_INDICES[device_name] = [name for name, _, _, _ in spec.button_mapping]
+    # We use the order that the buttons are listed in the spec to define the packing arrangement for a bitfield representation
+    # of button state.
+    DEVICE_BUTTON_STRUCT_INDICES[device_name] = {name: index for index, (name, _, _, _) in enumerate(spec.button_mapping)}
 
 
 def scale_to_control(x, axis_scale):
