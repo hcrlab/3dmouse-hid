@@ -1,5 +1,6 @@
 import time
 import threading
+from typing import Optional
 
 from srl.spacemouse.device import DeviceSpec, SpaceMouseData
 from srl.spacemouse.buttons import ButtonState
@@ -19,7 +20,7 @@ def convert(b1, b2, axis_scale: float):
     return scale_to_control(as_int16, axis_scale)
 
 
-class SpaceMouse(object):
+class SpaceMouse:
     def __init__(self, spec: DeviceSpec, control_rate=TELEOP_CONTROL_RATE):
 
         # Note: these can be found using `hid.enumerate()`
@@ -64,12 +65,15 @@ class SpaceMouse(object):
         """
         self._rotation_callback = callback
 
-    def get_controller_state(self) -> SpaceMouseData:
+    def get_controller_state(self) -> Optional[SpaceMouseData]:
         """
         Returns the current state of the 3d mouse, a dictionary of pos, orn, and button on/off.
         """
         # Get a copy of the latest data
         control = self._control
+        if control is None:
+            # The caller must've beaten the actual device thread. No state to give them yet.
+            return None
         dpos = np.array(control.xyz)
         rot = np.array(control.rpy)
 
@@ -83,7 +87,7 @@ class SpaceMouse(object):
         return SpaceMouseData(control.t, dpos, rot, control.buttons)
 
     @property
-    def is_running(self):
+    def is_running(self) -> bool:
         return self.thread is not None
 
     def run(self):
