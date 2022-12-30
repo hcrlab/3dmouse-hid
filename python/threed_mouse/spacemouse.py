@@ -3,7 +3,7 @@ import threading
 from typing import Optional
 
 from srl.spacemouse.device import DeviceSpec, SpaceMouseData
-from srl.spacemouse.buttons import ButtonState
+from srl.spacemouse.buttons import ButtonState, ButtonStateStruct, DEVICE_BUTTON_STRUCT_INDICES
 
 import numpy as np
 
@@ -85,6 +85,12 @@ class SpaceMouse:
             self._rotation_callback(rot)
 
         return SpaceMouseData(control.t, dpos, rot, control.buttons)
+
+    def get_button_state(self) -> Optional[ButtonStateStruct]:
+        control = self._control
+        if control is None:
+            return None
+        return ButtonStateStruct(control[3], DEVICE_BUTTON_STRUCT_INDICES[self.name])
 
     @property
     def is_running(self) -> bool:

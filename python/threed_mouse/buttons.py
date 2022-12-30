@@ -39,23 +39,19 @@ class SpaceMouseButtonDebouncer:
     """ Limit the number of times a change in state of the SpaceMouse's buttons is reported
         API modeled on lodash's debounce: https://lodash.com/docs#debounce
     """
-    def __init__(self, leading: Union[bool, Set[str]], trailing: Union[bool, Set[str]], max_wait: float) -> None:
+    def __init__(self, name_to_index: Dict[str, int], leading: Union[bool, Set[str]], trailing: Union[bool, Set[str]], max_wait: float) -> None:
         # NOTE: Asking for both leading and trailing events for the same button will give you an
         # immediate event on the first activation of the button, then silence until the button is released and max_wait
         # seconds has passed. Asking for neither leading nor trailing will pass through the original signal.
         self._leading_preference = leading
         self._trailing_preference = trailing
         self.max_wait = max_wait
-        # We don't want to have to know the device before hand, so defer device specific initialization
-        # until we get the first event. Leave a None here so we know initialization is needed.
-        self.num_inputs = None
-        self._current_device_map = None
+        self.num_inputs = len(name_to_index)
+        self._current_device_map = name_to_index
 
-    def _configure_for_device(self, mapping: Dict[str, int]):
-        self.num_inputs = len(mapping)
         if isinstance(self._leading_preference, set):
             leading_mask = 0
-            for name, struct_index in mapping.items():
+            for name, struct_index in name_to_index.items():
                 if name in self._leading_preference:
                     leading_mask |= 1 << struct_index
             self.leading = leading_mask
@@ -63,7 +59,7 @@ class SpaceMouseButtonDebouncer:
             self.leading = -1 if self._leading_preference else 0
         if isinstance(self._trailing_preference, set):
             trailing_mask = 0
-            for name, struct_index in mapping.items():
+            for name, struct_index in name_to_index.items():
                 if name in self._trailing_preference:
                     trailing_mask |= 1 << struct_index
             self.trailing = trailing_mask
@@ -77,10 +73,8 @@ class SpaceMouseButtonDebouncer:
         self._last_value = 0
         self._debounced_value = 0
         self._last_update_timestamp = None
-        self._current_device_map = mapping
 
-
-    def update(self, current_button_state: ButtonStateStruct):
+    def update(self, current_button_state: int):
         """ Pass in the latest available value, get back processed button states.
 
         Args:
@@ -90,16 +84,10 @@ class SpaceMouseButtonDebouncer:
             _type_: _description_
         """
         if current_button_state is not None:
-            new_value = current_button_state.value
-            if self.num_inputs is None or self.num_inputs != len(current_button_state.name_to_index):
-                self._configure_for_device(current_button_state.name_to_index)
+            new_value = current_button_state
         else:
-            if self.num_inputs is None:
-                # Not configured yet, noop
-                return
-            else:
-                # Interpret the abscence of a new reading as a repeat of the old value
-                new_value = self._last_value
+            # Interpret the absence of a new reading as a repeat of the old value
+            new_value = self._last_value
 
         # Which bits flipped
         changed = self._last_value ^ new_value
@@ -130,4 +118,4 @@ class SpaceMouseButtonDebouncer:
         self._last_value = new_value
         self._last_update_timestamp = current_stamp
         # print(f"{changed} {should_notify} {self._debounced_value}")
-        return ButtonStateStruct(self._debounced_value, current_button_state.name_to_index)
+        return ButtonStateStruct(self._debounced_value, self._current_device_map)
