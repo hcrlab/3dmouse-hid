@@ -6,8 +6,10 @@ from srl.spacemouse.device import DeviceSpec, SpaceMouseData
 from srl.spacemouse.buttons import ButtonState, ButtonStateStruct, DEVICE_BUTTON_STRUCT_INDICES
 
 import numpy as np
+import carb
 
 TELEOP_CONTROL_RATE = 20
+
 
 def scale_to_control(x: float, axis_scale: float):
     x = x / axis_scale
@@ -101,22 +103,25 @@ class SpaceMouse:
         if self.thread:
             return
 
-        # The source for the hid module is a good reference:
-        # https://github.com/trezor/cython-hidapi/blob/master/hid.pyx
-        self.device = hid.device()
-        # self.device.open_path(bytes("/dev/spacemouse", "UTF-8"))
         opened = False
         for vendor_id, product_id in self.hid_ids:
             # Some devices have alternate identifiers. Loop through trying all of them
             try:
+                # The source for the hid module is a good reference:
+                # https://github.com/trezor/cython-hidapi/blob/master/hid.pyx
+                self.device = hid.device()
+                # self.device.open_path(bytes("/dev/spacemouse", "UTF-8"))
                 self.device.open(vendor_id, product_id)
                 opened = True
-                print(f"[spacemouse][device] Successfully connected to: {self.name}, vendor id: { vendor_id }, product id: {product_id}")
-            except OSError:
+                carb.log_info(f"Successfully connected to: {self.name}, vendor id: { vendor_id }, product id: {product_id}")
+
+            except OSError as e:
+                self.device.close()
+                self.device = None
                 continue
 
         if not opened:
-            print("Unable to open specified spacemouse device. Ensure you have installed spacenavd, obtained the correct vendor_id and product_id, as well as setting up the correct udev rule and the device is plugged in. ")
+            carb.log_error("Unable to open specified spacemouse device. Ensure you have installed spacenavd, obtained the correct vendor_id and product_id, as well as setting up the correct udev rule and the device is plugged in. ")
             raise RuntimeError("Couldn't open device")
         # We'll use the blocking interface and rely on the timeout feature instead
         # self.device.set_nonblocking(True)
@@ -172,10 +177,6 @@ class SpaceMouse:
         This function updates state, giving values for each
         axis [x,y,z,roll,pitch,yaw] in range [-1.0, 1.0]
         The timestamp (in fractional seconds since the start of the program)  is written as element "t"
-        If callback is provided, it is called on with a copy of the current state tuple.
-        If button_callback is provided, it is called only on button state changes with the argument (state, button_state).
-        Parameters:
-            data    The data for this HID event, as returned by the HID callback
         """
 
         for name, (chan, b1, b2, flip) in self.mappings.items():
