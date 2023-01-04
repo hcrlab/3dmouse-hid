@@ -114,7 +114,7 @@ class SpaceMouse:
                 self.device.open(vendor_id, product_id)
                 opened = True
                 carb.log_info(f"Successfully connected to: {self.name}, vendor id: { vendor_id }, product id: {product_id}")
-
+                break
             except OSError as e:
                 self.device.close()
                 self.device = None
