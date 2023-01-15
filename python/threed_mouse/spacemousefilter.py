@@ -3,6 +3,22 @@ import numpy as np
 EPS = np.finfo(float).eps
 
 
+def apply_linear_deadband(values, deadband, max_value=1.0):
+    to_clip = np.abs(values) < deadband
+    values[to_clip] = 0
+    values[~to_clip] = (values[~to_clip] - deadband * (np.abs(values[~to_clip]) / values[~to_clip])) / (max_value - deadband)
+
+
+def cubic(x, weight):
+    return weight * x ** 3  + (1.0 - weight) * x
+
+
+def apply_cubic_deadband(values, deadband, max_value=1.0, weight=.2):
+    to_clip = np.abs(values) < deadband
+    values[to_clip] = 0
+    values[~to_clip] = (cubic(values[~to_clip], weight) - cubic(deadband, weight) * (np.abs(values[~to_clip]) / values[~to_clip])) / (max_value - cubic(deadband, weight))
+
+
 class SpaceMouseFilter:
 
     def __init__(self,
@@ -35,10 +51,10 @@ class SpaceMouseFilter:
             self.prev_rot[:] = 0
             return
 
-        rot[np.abs(rot) < self.rotation_deadband] = 0
+        apply_cubic_deadband(rot, self.rotation_deadband)
 
         magnitude = np.linalg.norm(rot)
-        # Not sure if you can actuall max out multiple rotation dimensions at once,
+        # Not sure if you can actually max out multiple rotation dimensions at once,
         # but we're going to limit you to 1 anyways.
         # This helps avoid the case where you've maxed out one axis, then adding
         # small input to another axis increases the magnitude, but softmax
@@ -66,8 +82,7 @@ class SpaceMouseFilter:
             self.prev_trans[:] = 0
             return
 
-        # Cut small values completely
-        trans[np.abs(trans) < self.translation_deadband] = 0
+        apply_cubic_deadband(trans, self.translation_deadband)
 
         magnitude = np.linalg.norm(trans)
         # You _can_ max out multiple dimensions at once (X+Z or Y+Z) which would allow
