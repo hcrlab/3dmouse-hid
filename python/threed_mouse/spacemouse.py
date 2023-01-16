@@ -37,6 +37,7 @@ class SpaceMouse:
         # signal before it is passed out to consumers.
         self._position_callback = None
         self._rotation_callback = None
+        self._unexpected_close_callback = None
         self._control_rate = control_rate
 
         self.thread = None
@@ -66,6 +67,9 @@ class SpaceMouse:
         for re-mapping the device knob twists to different RPY settings.
         """
         self._rotation_callback = callback
+
+    def set_unexpected_close_callback(self, callback):
+        self._unexpected_close_callback = callback
 
     def get_controller_state(self) -> Optional[SpaceMouseData]:
         """
@@ -164,7 +168,17 @@ class SpaceMouse:
         }
         self._control = state_to_tuple(working_state)
         while not self._stop_event.is_set():
-            d = self.device.read(13, timeout_ms=1000 / self._control_rate)
+            try:
+                d = self.device.read(13, timeout_ms=1000 / self._control_rate)
+            except OSError as e:
+                # This usually means the device was unplugged
+                carb.log_warn("Lost connection to SpaceMouse. Closing device.")
+                self.device.close()
+
+                if self._unexpected_close_callback:
+                    self._unexpected_close_callback()
+                self.thread = None
+                break
             if d is not None and len(d) > 0:
                 self.process(d, working_state)
                 if working_state["xyz_rpy_change_count"] == 2 or working_state["buttons_changed"]:
