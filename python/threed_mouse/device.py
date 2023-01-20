@@ -5,6 +5,8 @@ SpaceMouseData = namedtuple(
     "SpaceMouseData", ["t", "xyz", "rpy", "buttons"]
 )
 
+# (but per-axis scaling can also be achieved by setting this value)
+# byte1 and byte2 are indices into the HID array indicating the two bytes to read to form the value for this axis
 # For the SpaceNavigator, these are consecutive bytes following the channel number.
 AxisSpec = namedtuple("AxisSpec", ["channel", "byte1", "byte2", "scale"])
 

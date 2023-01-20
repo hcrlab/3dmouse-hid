@@ -8,6 +8,7 @@ from srl.spacemouse.buttons import ButtonState, ButtonStateStruct, DEVICE_BUTTON
 import numpy as np
 import carb
 
+# control rate (in hz) - try to enforce this rate of control for reading from the device and sending commands
 TELEOP_CONTROL_RATE = 20
 
 
