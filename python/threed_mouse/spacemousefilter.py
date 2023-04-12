@@ -13,7 +13,7 @@ def cubic(x, weight):
     return weight * x ** 3  + (1.0 - weight) * x
 
 
-def apply_cubic_deadband(values, deadband, max_value=1.0, weight=.2):
+def apply_cubic_deadband(values, deadband, max_value=1.0, weight=.4):
     to_clip = np.abs(values) < deadband
     values[to_clip] = 0
     values[~to_clip] = (cubic(values[~to_clip], weight) - cubic(deadband, weight) * (np.abs(values[~to_clip]) / values[~to_clip])) / (max_value - cubic(deadband, weight))
