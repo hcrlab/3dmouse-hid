@@ -1,0 +1,20 @@
+{
+  "name": "3dmouse-hid",
+  "version": "1.0.0",
+  "description": "Wrapper and tools for 3D mice",
+  "main": "dist/space-driver.js",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/hcrlab/3dmouse-hid"
+  },
+  "type": "module",
+  "keywords": [
+    "spacemouse",
+    "teleoperation",
+    "robot"
+  ],
+  "author": "Varad Dhat",
+  "license": "BSD-2-Clause",
+  "devDependencies": {
+  }
+}
