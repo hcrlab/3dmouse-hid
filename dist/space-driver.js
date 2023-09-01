@@ -1,5 +1,5 @@
 let device;
-window.latestEvent = null;
+
 
 let dataCallback = null;
 let freshResponse = false;
@@ -23,11 +23,11 @@ if (navigator.hid) {
     console.error("WebHID API is not supported in this browser.");
 }
 
-function handleConnectedDevice(e) { window.latestEvent = e;
+function handleConnectedDevice(e) { 
    console.log("Device connected: " + e.device.productName);
 }
 
-function handleDisconnectedDevice(e) {window.latestEvent = e;
+function handleDisconnectedDevice(e) {
    console.log("Device disconnected: " + e.device.productName);
    console.dir(e);
    

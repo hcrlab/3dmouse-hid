@@ -21,15 +21,7 @@ function frametoinistialstate(){
 
 }
 
-// function someFunction() {
-//     if (SpaceDriver.window.latestEvent) {
-//         // Use window.latestEvent here
-//         const report = SpaceDriver.handleInputReport(e);
-//         processInput(report);
-//     }
-//  }
- 
-// someFunction()
+
 //Red X-axis
 const curveX = new THREE.LineCurve3(
     new THREE.Vector3(0, 0, 0),
