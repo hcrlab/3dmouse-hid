@@ -101,7 +101,5 @@ export function handleInputReport(e) {
 }
 window.addEventListener('DOMContentLoaded', (event) => {
     const button = document.querySelector('button');
-    button.addEventListener('click', selectDevice);
-    navigator.hid.addEventListener("connect", handleConnectedDevice);
-    navigator.hid.addEventListener("disconnect", handleDisconnectedDevice);
+    button.addEventListener('click', selectDevice);   
 });
