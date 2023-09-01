@@ -8,7 +8,8 @@ Originally forked from [webhid-space](https://github.com/larsgk/webhid-space). W
 
 Run a server in the root of the package:
 
-    python -m http
+   python3 -m http.server
+
 
 Open localhost:8000 in Chrome/Chromium.
 

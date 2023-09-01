@@ -1,7 +1,24 @@
 <!DOCTYPE html>
-<html>
+<html lang=”en”>
+<head>    
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
+    <link rel="stylesheet" href="main.css">
+</head>
 <body>
-  <main-app></main-app>
+    <button id="hidButton">Request HID Device</button>
+    <script type="module" src="main-app.js"></script>
+    <div>
+        <p><strong>Translation:</strong></p>
+        <p>X: <span id="translateX">0</span></p>
+        <p>Y: <span id="translateY">0</span></p>
+        <p>Z: <span id="translateZ">0</span></p>
+
+        <p><strong>Rotation (RPY):</strong></p>
+        <p>Roll (Rx): <span id="rotateX">0</span></p>
+        <p>Pitch (Ry): <span id="rotateY">0</span></p>
+        <p>Yaw (Rz): <span id="rotateZ">0</span></p>
+    </div>
 </body>
-<script type="module" src="./main-app.js"></script>
 </html>
