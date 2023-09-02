@@ -3,8 +3,12 @@ import { BufferGeometryUtils } from "https://unpkg.com/three@0.126.1/examples/js
 // import { handleInputReport } from '../dist/space-driver.js';
 import * as SpaceDriver from '../dist/space-driver.js';
 import * as Scene from '../dist/scene.js';
-
+import DataManager from '../dist/dataManager.js';
 SpaceDriver.configureCallback(processInput)
+
+
+
+
 
 // // Scene
 // const scene = new THREE.Scene();
@@ -79,6 +83,7 @@ SpaceDriver.configureCallback(processInput)
 
 // Camera
 const camera = new THREE.PerspectiveCamera(100, window.innerWidth / window.innerHeight, 0.6, 2000);
+let globalCSVData = [];
 
 function softmax(Tx, Ty, Tz) {
     let sum = (Tx) + (Ty) + (Tz);
@@ -107,16 +112,27 @@ function softmax_r(Rx, Ry, Rz) {
 
 
 function processInput(report) {
+
     if (report.Tx === 0 && report.Ty === 0 && report.Tz === 0) {
         Scene.frametoinistialstate();
     } else {
         let { wx, wy, wz } = softmax(report.Tx, report.Ty, report.Tz);
         //console.log(`XX: ${wx}, YY: ${wy}, ZZ: ${wz}`);
         
-        Scene.mergedMesh.position.x = -report.Tx * wx / 100;
-        Scene.mergedMesh.position.z = -report.Ty * wy / 100;
-        Scene.mergedMesh.position.y = -report.Tz * wz / 100;
-        //console.log("xx"+Scene.mergedMesh.position); // To log all positions at once
+        // //Using Softmax
+        // Scene.mergedMesh.position.x = report.Tx * wx / 100;
+        // Scene.mergedMesh.position.z = report.Ty * wy / 100;
+        // Scene.mergedMesh.position.y = report.Tz * wz / 100;
+
+        //Observation 2
+
+        Scene.mergedMesh.position.x = report.Tx/10
+        Scene.mergedMesh.position.z = report.Ty/10
+        Scene.mergedMesh.position.y = report.Tz/10
+
+        console.log("TXX "+Scene.mergedMesh.position.x + " TYY " +Scene.mergedMesh.position.y +" TZZ " +Scene.mergedMesh.position.z ); // To log all positions at once
+        //globalCSVData.push(['TXX', Scene.mergedMesh.position.x, 'TYY', Scene.mergedMesh.position.y, 'TZZ', Scene.mergedMesh.position.z]);
+        DataManager.pushData(['TXX', Scene.mergedMesh.position.x, 'TYY', Scene.mergedMesh.position.y, 'TZZ', Scene.mergedMesh.position.z]);
     }
 
     if (report.Rx === 0 && report.Ry === 0 && report.Rz === 0) {
@@ -125,15 +141,48 @@ function processInput(report) {
         let { wx, wy, wz } = softmax_r(report.Rx, report.Ry, report.Rz);
         //console.log(`XX: ${wx}, YY: ${wy}, ZZ: ${wz}`);
         
-        Scene.mergedMesh.rotation.x = -report.Rx * wx / 450;
-        Scene.mergedMesh.rotation.z = -report.Ry * wy / 450;
-        Scene.mergedMesh.rotation.y = -report.Rz * wz / 450;
-        //console.log(Scene.mergedMesh.rotation); // To log all rotations at once
-    }
-}
+        // Scene.mergedMesh.rotation.x = report.Rx * wx / 450;
+        // Scene.mergedMesh.rotation.z = report.Ry * wy / 450;
+        // Scene.mergedMesh.rotation.y = report.Rz * wz / 450;
+        console.log("RXX "+Scene.mergedMesh.rotation.x + " RYY " +Scene.mergedMesh.rotation.y +" RZZ " +Scene.mergedMesh.rotation.z ); // To log all positions at once
+        //globalCSVData.push(['RXX', Scene.mergedMesh.rotation.x, 'RYY', Scene.mergedMesh.rotation.y, 'RZZ', Scene.mergedMesh.rotation.z]);
+        DataManager.pushData(['RXX', Scene.mergedMesh.rotation.x, 'RYY', Scene.mergedMesh.rotation.y, 'RZZ', Scene.mergedMesh.rotation.z]);
 
+      
+    } // To log all rotations at once
+    }
+function arrayToCSV(data) {
+        return data.map(row => row.join(',')).join('\n');
+    }
+function downloadCSV(csvContent, fileName = "data.csv") {
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement("a");
+    
+    const url = URL.createObjectURL(blob);
+    link.setAttribute("href", url);
+    link.setAttribute("download", fileName);
+    link.style.visibility = 'hidden';
+    
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+}
+    
+    
 // Set initial camera state when starting
 Scene.setCameraToInitialState();
+
+
+window.addEventListener('DOMContentLoaded', (event) => {
+    const downloadButton = document.getElementById('downloadButton');
+    downloadButton.addEventListener('click', downloadAccumulatedData);
+});
+
+function downloadAccumulatedData() {
+    const csvContent = arrayToCSV(DataManager.getData());
+    downloadCSV(csvContent, "output.csv");
+}
+
 
 
 // const axesHelper = new THREE.AxesHelper(10);  // 5 is the size; adjust as needed

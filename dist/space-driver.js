@@ -1,3 +1,5 @@
+import DataManager from './dataManager.js';
+
 let device;
 
 
@@ -74,6 +76,8 @@ export function handleInputReport(e) {
             document.getElementById("translateX").textContent = response.Tx;
             document.getElementById("translateY").textContent = response.Ty;
             document.getElementById("translateZ").textContent = response.Tz;
+            DataManager.pushData(['Tx', response.Tx, 'Ty', response.Ty, 'Tz', response.Tz]);
+
             freshResponse = false;
             break;
 
@@ -86,6 +90,7 @@ export function handleInputReport(e) {
             document.getElementById("rotateX").textContent = response.Rx;
             document.getElementById("rotateY").textContent = response.Ry;
             document.getElementById("rotateZ").textContent = response.Rz;
+            DataManager.pushData(['Rx', response.Rx, 'Ry', response.Ry, 'Rz', response.Rz]);
             freshResponse = true;
             break;
 
@@ -97,6 +102,8 @@ export function handleInputReport(e) {
     if (dataCallback !== null && freshResponse) {
         dataCallback(response)
     }
+
+
 
 }
 window.addEventListener('DOMContentLoaded', (event) => {
