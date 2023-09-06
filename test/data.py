@@ -1,7 +1,10 @@
 import pandas as pd
 import numpy as np
+# from scipy.optimize import curve_fit
+import matplotlib.pyplot as plt
+
 # Read the CSV file as tab-separated
-df = pd.read_csv("output - 2023-09-01T155646.793.csv", delimiter="\t", header=None)
+df = pd.read_csv("output.csv", delimiter="\t", header=None)
 
 # Create empty lists to store values
 Tx = []
@@ -13,6 +16,9 @@ TYY = []
 Tz = []
 Rz = []
 TZZ = []
+
+def exponential_func(x, a, b, c):
+    return a * np.exp(b * x) + c
 
 # Iterate over the DataFrame
 for index, row in df.iterrows():
@@ -48,9 +54,49 @@ Tz  = np.array(Tz )
 Rz  = np.array(Rz )
 TZZ = np.array(TZZ)
 
-import matplotlib.pyplot as plt
+# print("TX", Tx ,"\n\n\n\n\n")
+# print("TXX",TXX)
 
-plt.plot(Tx)
-plt.plot(TXX)
+# popt, _ = curve_fit(exponential_func, TXX, Tx)
 
+
+# plt.scatter(TXX, Tx, color='blue', marker='o')
+
+# # Plotting the fitted exponential curve
+# x_vals = np.linspace(min(TXX), max(TXX), 1000)
+# y_vals = exponential_func(x_vals, *popt)
+# plt.plot(x_vals, y_vals, color='red', linestyle='-', linewidth=1)
+
+# plt.title('Scatter plot with exponential fit')
+plt.plot(Tx,TXX)
+plt.xlabel('TXX')
+plt.ylabel('Tx')
+plt.grid(True)
 plt.show()
+# class ExponentialSmoothing:
+#     def __init__(self, alpha):
+#         self.alpha = alpha
+#         self.last_smoothed_value = None
+
+#     def smooth(self, current_value):
+#         if self.last_smoothed_value is None:
+#             self.last_smoothed_value = current_value
+#             return current_value
+
+#         smoothed_value = self.alpha * current_value + (1 - self.alpha) * self.last_smoothed_value
+#         self.last_smoothed_value = smoothed_value
+
+#         return smoothed_value
+
+# # Usage:
+# alpha = 0.2
+# smoother = ExponentialSmoothing(alpha)
+
+# readings = [5, 6, 7, 6, 5, 6, 7, 8, 7, 6, 5]  # example data
+
+# for reading in readings:
+#     smoothed_value = smoother.smooth(reading)
+#     print(f"Actual: {reading}, Smoothed: {smoothed_value:.2f}")
+
+
+

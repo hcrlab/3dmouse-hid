@@ -9,8 +9,10 @@
 <body>
     <button id="hidButton">Request HID Device</button>
     <button id="downloadButton">DownloadCSV</button>
-    <script type="module" src="main-app.js"></script>
-    
+    <script src="./roslib.js"></script>
+    <script type="module" src="main-scene.js"></script>
+    <!-- <script type="module" src="main_robot.js"></script> -->
+    <p class="text">Connection status: <span class="text" id="status"></span></p>
     <div>
         <p><strong>Translation:</strong></p>
         <p>X: <span id="translateX">0</span></p>

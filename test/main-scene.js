@@ -40,19 +40,17 @@ function computePosition(value, threshold, growthRateAbove, baseBelow) {
 }
 function processInput(report) {
 
-
-
-    if (report.Tx === 0 && report.Ty === 0 && report.Tz === 0) {
+    if (report.Tx_f === 0 && report.Ty_f === 0 && report.Tz_f === 0) {
         Scene.mergedMesh.position.x = 0
         Scene.mergedMesh.position.z = 0
         Scene.mergedMesh.position.y = 0
-        console.log("TXX "+Scene.mergedMesh.position.x + " TYY " +Scene.mergedMesh.position.y +" TZZ " +Scene.mergedMesh.position.z ); // To log all positions at once
+        //console.log("TXX "+Scene.mergedMesh.position.x + " TYY " +Scene.mergedMesh.position.y +" TZZ " +Scene.mergedMesh.position.z ); // To log all positions at once
         DataManager.pushData(['TXX', Scene.mergedMesh.position.x, 'TYY', Scene.mergedMesh.position.y, 'TZZ', Scene.mergedMesh.position.z]);
         Scene.frametoinistialstate();
     } else {
 
         //Observation 3
-        if(report.Tx <= 50 || report.Ty <=50 || report.Tz <= 50){
+        if(report.Tx_f <= 50 || report.Ty_f <=50 || report.Tz_f <= 50){
             Scene.frametoinistialstate();
 
 
@@ -63,10 +61,10 @@ function processInput(report) {
         let { wx, wy, wz } = softmax(report.Tx, report.Ty, report.Tz);
         //console.log(`XX: ${wx}, YY: ${wy}, ZZ: ${wz}`);
         
-        // 
-        // Scene.mergedMesh.position.x = report.Tx * wx / 100;
-        // Scene.mergedMesh.position.z = report.Ty * wy / 100;
-        // Scene.mergedMesh.position.y = report.Tz * wz / 100;
+        
+        Scene.mergedMesh.position.x = report.Tx_f
+        Scene.mergedMesh.position.z = report.Ty_f
+        Scene.mergedMesh.position.y = report.Tz_f
 
         //Observation 2
         // const threshold = 175;
@@ -76,20 +74,20 @@ function processInput(report) {
         // Scene.mergedMesh.position.x = computePosition(report.Tx, threshold, growthRateAboveThreshold, baseBelowThreshold);
         // Scene.mergedMesh.position.y = computePosition(report.Ty, threshold, growthRateAboveThreshold, baseBelowThreshold);
         // Scene.mergedMesh.position.z = computePosition(report.Tz, threshold, growthRateAboveThreshold, baseBelowThreshold);
-        if(report.Tx >= 175 || report.Ty >= 175 || report.Tz >= 175){
-            Scene.mergedMesh.position.x = report.Tx/1.5
-            Scene.mergedMesh.position.z = report.Ty/1.5
-            Scene.mergedMesh.position.y = report.Tz/1.5
-            console.log("varad")
-        }
-        else{
-            Scene.mergedMesh.position.x = report.Tx/2
-            Scene.mergedMesh.position.z = report.Ty/2
-            Scene.mergedMesh.position.y = report.Tz/2
-        }
+        // if(report.Tx >= 175 || report.Ty >= 175 || report.Tz >= 175){
+        //     Scene.mergedMesh.position.x = report.Tx/1.5
+        //     Scene.mergedMesh.position.z = report.Ty/1.5
+        //     Scene.mergedMesh.position.y = report.Tz/1.5
+        //     console.log("varad")
+        // }
+        // else{
+        //     Scene.mergedMesh.position.x = report.Tx/2
+        //     Scene.mergedMesh.position.z = report.Ty/2
+        //     Scene.mergedMesh.position.y = report.Tz/2
+        // }
 
         
-        console.log("TXX "+Scene.mergedMesh.position.x + " TYY " +Scene.mergedMesh.position.y +" TZZ " +Scene.mergedMesh.position.z ); // To log all positions at once
+        //console.log("TXX "+Scene.mergedMesh.position.x + " TYY " +Scene.mergedMesh.position.y +" TZZ " +Scene.mergedMesh.position.z ); // To log all positions at once
         DataManager.pushData(['TXX', Scene.mergedMesh.position.x, 'TYY', Scene.mergedMesh.position.y, 'TZZ', Scene.mergedMesh.position.z]);
     }
 
@@ -102,7 +100,7 @@ function processInput(report) {
         // Scene.mergedMesh.rotation.x = report.Rx * wx / 450;
         // Scene.mergedMesh.rotation.z = report.Ry * wy / 450;
         // Scene.mergedMesh.rotation.y = report.Rz * wz / 450;
-        console.log("RXX "+Scene.mergedMesh.rotation.x + " RYY " +Scene.mergedMesh.rotation.y +" RZZ " +Scene.mergedMesh.rotation.z ); // To log all positions at once
+        //console.log("RXX "+Scene.mergedMesh.rotation.x + " RYY " +Scene.mergedMesh.rotation.y +" RZZ " +Scene.mergedMesh.rotation.z ); // To log all positions at once
         //globalCSVData.push(['RXX', Scene.mergedMesh.rotation.x, 'RYY', Scene.mergedMesh.rotation.y, 'RZZ', Scene.mergedMesh.rotation.z]);
         DataManager.pushData(['RXX', Scene.mergedMesh.rotation.x, 'RYY', Scene.mergedMesh.rotation.y, 'RZZ', Scene.mergedMesh.rotation.z]);
 
