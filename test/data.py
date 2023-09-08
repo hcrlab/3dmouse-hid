@@ -7,9 +7,9 @@ import matplotlib.pyplot as plt
 df = pd.read_csv("output.csv", delimiter="\t", header=None)
 
 # Create empty lists to store values
-Tx = []
 Rx = []
-TXX = []
+# Rx = []
+RXX = []
 Ty = []
 Ry = []
 TYY = []
@@ -24,12 +24,12 @@ def exponential_func(x, a, b, c):
 for index, row in df.iterrows():
     row = df.loc[index, :].values.flatten().tolist()
     row = row[0].split(',')
-    if row[0] == 'Tx':
-        Tx.append(float(row[1]))
-    elif row[0] == 'Rx':
+    if row[0] == 'Rx':
         Rx.append(float(row[1]))
-    elif row[0] == 'TXX':
-        TXX.append(float(row[1]))
+    # elif row[0] == 'Rx':
+        Rx.append(float(row[1]))
+    elif row[0] == 'RXX':
+        RXX.append(float(row[1]))
     # Similarly for Ty, Ry, Tyy, etc.
     if row[2] == 'Ty':
         Ty.append(float(row[3]))
@@ -44,9 +44,9 @@ for index, row in df.iterrows():
     elif row[4] == 'TZZ':
         TZZ.append(float(row[5]))
 
-Tx  = np.array(Tx )
 Rx  = np.array(Rx )
-TXX = np.array(TXX)
+# Rx  = np.array(Rx )
+RXX = np.array(RXX)
 Ty  = np.array(Ty )
 Ry  = np.array(Ry )
 TYY = np.array(TYY)
@@ -68,9 +68,9 @@ TZZ = np.array(TZZ)
 # plt.plot(x_vals, y_vals, color='red', linestyle='-', linewidth=1)
 
 # plt.title('Scatter plot with exponential fit')
-plt.plot(Tx,TXX)
-plt.xlabel('TXX')
-plt.ylabel('Tx')
+plt.plot(Rx,)
+plt.xlabel('Tx')
+plt.ylabel('TXX')
 plt.grid(True)
 plt.show()
 # class ExponentialSmoothing:

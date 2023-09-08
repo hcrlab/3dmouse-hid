@@ -1,5 +1,5 @@
 import * as SpaceDriver from '../dist/space-driver.js';
-SpaceDriver.configureCallback(move_robot)
+//SpaceDriver.configureCallback(move_robot)
 
 //Create a new Ros instance and connect to the Server
 
@@ -22,29 +22,47 @@ ros.on('close', function() {
     document.getElementById("status").innerHTML = "Closed";
 });
 
-var robotTopic= new ROSLIB.Topic({
-    ros : ros,
-    name : '/servo_node/delta_twist_cmds',
-    messagType : 'geometry_msgs/msg/Twist'
-  });
+// Assuming 'robotTopic' is your ROS 2 topic for publishing
+var move_robotTopic = new ROSLIB.Topic({
+    ros: ros,
+    name: '/servo_node/delta_twist_cmds', // Replace with your topic name
+    messageType: 'geometry_msgs/msg/TwistStamped' // Specify the correct message type
+});
 
+function move_robot(report) {
+    // Assuming you have a ROS node initialized as 'rosNode'
 
-function move_robot(){
-    console.log("Teleop Twist");
-    var twist=new ROSLIB.Message({
-        linear: {
-            x:Tx,
-            y:Ty,
-            z:Tz
-        },
-        angular:{
-            x:0,
-            y:0,
-            z:angular
+    // Create a Twist message
+    var twist = new ROSLIB.Message({
+        twist: {
+            linear: {
+                x: -report.Tx_f,
+                y: report.Ty_f,
+                z: -report.Tz_f
+            },
+            angular: {
+                x: -report.Rx_f,
+                y: report.Ry_f,
+                z: -report.Rz_f
+            }
         }
     });
-    robotTopic.publish(twist);
+    var header = new ROSLIB.Message({
+        stamp: {
+            sec: Math.floor(Date.now() / 1000), // Current time in seconds
+            nanosec: (Date.now() % 1000) * 1e6 // Current time in nanoseconds
+        },
+        frame_id: 'panda_link0' // Replace with your desired frame_id
+    });
 
+    // Assign the header to the TwistStamped message
+    twist.header = header;
 
+    
 
+    // Publish the Twist message to the topic
+    move_robotTopic.publish(twist);
+
+    console.log("Published Twist message to robotTopic.");
 }
+
