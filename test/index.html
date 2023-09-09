@@ -4,15 +4,23 @@
     <meta charset="UTF-8">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
-    <link rel="stylesheet" href="main.css">
-</head>
-<body>
-    <button id="hidButton">Request HID Device</button>
-    <button id="downloadButton">DownloadCSV</button>
     <script src="./roslib.js"></script>
-    <script type="module" src="main-scene.js"></script>
     <script type="module" src="main_robot.js"></script>
     <script type="module" src="../dist/space-driver.js"></script>
+    <style>
+        body {
+            margin: 0px;
+            height: 100vh;
+        }
+        canvas {
+            display: block;
+        }
+    </style>
+</head>
+<body>
+    <p id="errorMessage">WebHID is not available. Are you using Chrome or Edge? Are you running from <tt>localhost</tt> or HTTPS?</p>
+    <button id="hidButton" style="display: none;">Request HID Device</button>
+    <button id="downloadButton">DownloadCSV</button>
     <!-- <script type="module" src="main_robot.js"></script> --> 
     <p class="text">Connection status: <span class="text" id="status"></span></p>
     <div>
@@ -27,5 +35,87 @@
         <p>Yaw (Rz): <span id="rotateZ">0</span></p>
     </div>
 </body>
+<script type="module">
+    import { ThreeDMouse } from '../dist/space-driver.js';
+    import * as THREE from "https://unpkg.com/three@0.126.1/build/three.module.js"
+    import { BufferGeometryUtils } from "https://unpkg.com/three@0.126.1/examples/jsm/utils/BufferGeometryUtils.js";
+    // import { handleInputReport } from '../dist/space-driver.js';
+    import * as Scene from '../dist/scene.js';
+    import DataManager from '../dist/dataManager.js';
+
+    window.addEventListener('DOMContentLoaded', (event) => {
+        if (navigator.hid) {
+            document.getElementById("errorMessage").innerText = "";
+            document.getElementById("hidButton").style.display = "block";
+        } else {
+            return
+        }
+
+        const connectButton = document.getElementById('hidButton')
+        connectButton.addEventListener('click', () => 
+            ThreeDMouse.requestDevice().then(device => {
+                device.configureCallback(updateMarker)
+                connectButton.disabled = true;
+            }).catch(error => {
+                document.getElementById("errorMessage").innerText = error;
+            })
+        );
+        document.getElementById('downloadButton').addEventListener('click', downloadAccumulatedData);
+    });
+    function updateMarker(report) {
+        if (report.Tx_f === 0 && report.Ty_f === 0 && report.Tz_f === 0) {
+            Scene.frametoinistialstate();
+        }
+
+        Scene.mergedMesh.position.x = -report.Tx_f
+        Scene.mergedMesh.position.z = -report.Ty_f
+        Scene.mergedMesh.position.y = -report.Tz_f
+
+        Scene.mergedMesh.rotation.x = -report.Rx_f 
+        Scene.mergedMesh.rotation.z = -report.Ry_f 
+        Scene.mergedMesh.rotation.y = -report.Rz_f
+
+        document.getElementById("translateX").textContent = report.Tx_f;
+        document.getElementById("translateY").textContent = report.Ty_f;
+        document.getElementById("translateZ").textContent = report.Tz_f;
+
+        document.getElementById("rotateX").textContent = report.Rx_f;
+        document.getElementById("rotateY").textContent = report.Ry_f;
+        document.getElementById("rotateZ").textContent = report.Rz_f;
+
+
+        // console.log("TXX "+Scene.mergedMesh.position.x + " TYY " +Scene.mergedMesh.position.y +" TZZ " +Scene.mergedMesh.position.z ); // To log all positions at once
+        // console.log("RXX "+Scene.mergedMesh.rotation.x + " RYY " +Scene.mergedMesh.rotation.y +" RZZ " +Scene.mergedMesh.rotation.z )
+        }
+
+
+    function arrayToCSV(data) {
+            return data.map(row => row.join(',')).join('\n');
+        }
+    function downloadCSV(csvContent, fileName = "data.csv") {
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const link = document.createElement("a");
+        
+        const url = URL.createObjectURL(blob);
+        link.setAttribute("href", url);
+        link.setAttribute("download", fileName);
+        link.style.visibility = 'hidden';
+        
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    }
+        
+        
+    // Set initial camera state when starting
+    Scene.setCameraToInitialState();
+
+
+    function downloadAccumulatedData() {
+        const csvContent = arrayToCSV(DataManager.getData());
+        downloadCSV(csvContent, "output.csv");
+    }
+
+</script>
 </html>
 

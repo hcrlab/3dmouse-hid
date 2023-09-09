@@ -1,136 +1,105 @@
 import DataManager from './dataManager.js';
 
-
-let device;
-
-
-let dataCallback = null;
-let freshResponse = false;
-let response = {
-    Tx: null,
-    Ty: null,
-    Tz: null,
-    Rx: null,
-    Ry: null,
-    Rz: null
-};
-let response_filter = {
-    Tx_f: null,
-    Ty_f: null,
-    Tz_f: null,
-    Rx_f: null,
-    Ry_f: null,
-    Rz_f: null
-};
-export function configureCallback(callback) {
-    dataCallback = callback
-}
-
-
-if (navigator.hid) {
-    navigator.hid.addEventListener("connect", handleConnectedDevice);
-    navigator.hid.addEventListener("disconnect", handleDisconnectedDevice);
-} else {
-    console.error("WebHID API is not supported in this browser.");
-}
-
-function handleConnectedDevice(e) { 
-   console.log("Device connected: " + e.device.productName);
-}
-
-function handleDisconnectedDevice(e) {
-   console.log("Device disconnected: " + e.device.productName);
-   console.dir(e);
-   
-
-}
-
-export async function selectDevice() {
-    try {
-        const devices = await navigator.hid.requestDevice({ filters: [{ vendorId: 0x046d }] });
-
-        if (devices.length === 0) {
-            console.warn("No devices found.");
-            return;
-        }
-
-        const device = devices[0];
-
-        if (!device.opened) {
-            await device.open();
-            console.log("Opened device: " + device.productName);
-           
-            device.addEventListener("inputreport", handleInputReport);
-            
-        } else {
-            console.log("Device is already open:", device.productName);
-        }
-    } catch (error) {
-        console.error("Error:", error);
+export class ThreeDMouse {
+    constructor(device) {
+        this.device = device;
+        this.device.addEventListener("inputreport", this.handleInputReport.bind(this));
+        navigator.hid.addEventListener("connect", this.handleConnectedDevice);
+        navigator.hid.addEventListener("disconnect", this.handleDisconnectedDevice);
+        this.dataCallback = null;
+        this.freshResponse = false;
+        this.response = {
+            Tx: null,
+            Ty: null,
+            Tz: null,
+            Rx: null,
+            Ry: null,
+            Rz: null
+        };
+        this.response_filter = {
+            Tx_f: null,
+            Ty_f: null,
+            Tz_f: null,
+            Rx_f: null,
+            Ry_f: null,
+            Rz_f: null
+        };
     }
-}
+    configureCallback(callback) {
+        this.dataCallback = callback
+    }
 
-function softmax(Tx, Ty, Tz) {
-    let sum = Math.abs(Tx) + Math.abs(Ty) + Math.abs(Tz);
+    handleConnectedDevice(e) {
+        console.log(`Device ${e.device.productName} is connected.`);
+    }
+    handleDisconnectedDevice(e) {
+        console.log(`Device ${e.device.productName} is disconnected.`);
+    }
+    static async requestDevice() {
+        try {
+            const devices = await navigator.hid.requestDevice({ filters: [{ vendorId: 0x046d }] });
 
-    
+            if (devices.length === 0) {
+                console.warn("No devices found.");
+                return;
+            }
 
-    return {
-        wx: Math.abs(Tx)/sum,
-        wy: Math.abs(Ty)/sum,     
-        wz: Math.abs(Tz)/sum
-    };
-}
+            this.device = devices[0];
 
-function softmax_r(Rx, Ry, Rz) {
-    let sum = Math.abs(Rx) + Math.abs(Ry) + Math.abs(Rz);
-    console.log("RX"+ Rx)
-    console.log("SUM" + sum)
+            if (!this.device.opened) {
+                await this.device.open();
+                console.log("Opened device: " + this.device.productName);
+                return new ThreeDMouse(this.device)
 
+            } else {
+                console.log("Device is already open:", this.device.productName);
+            }
+        } catch (error) {
+            console.error("Error:", error);
+        }
+    }
 
-    return {
-        WX: Math.abs(Rx) / sum,
-        WY: Math.abs(Ry) / sum,
-        WZ: Math.abs(Rz) / sum
-    };
-        
-    
-}
+    handleInputReport(e) {
 
-export function handleInputReport(e) {
+        let response_filter = {
+            Tx_f: null,
+            Ty_f: null,
+            Tz_f: null,
+            Rx_f: null,
+            Ry_f: null,
+            Rz_f: null
+        }
+        switch (e.reportId) {
+            case 1: // Translation event
 
-   // console.log(e.reportId)
-    // console.log(e)
-    switch (e.reportId) {
-        case 1: // Translation event
+                // Get translation values from the data
+                this.response.Tx = e.data.getInt16(0, true) / 350;
+                this.response.Ty = e.data.getInt16(2, true) / 350;
+                this.response.Tz = e.data.getInt16(4, true) / 350;
 
-            // Get translation values from the data
-            response.Tx = e.data.getInt16(0, true) / 350;
-            response.Ty = e.data.getInt16(2, true) / 350;
-            response.Tz = e.data.getInt16(4, true) / 350;
+                // Display translation values in the console and on the webpage
+                console.log(`Tx: ${this.response.Tx}, Ty: ${this.response.Ty}, Tz: ${this.response.Tz}`);
 
-            // Display translation values in the console and on the webpage
-            console.log(`Tx: ${response.Tx}, Ty: ${response.Ty}, Tz: ${response.Tz}`);
-            document.getElementById("translateX").textContent = response.Tx;
-            document.getElementById("translateY").textContent = response.Ty;
-            document.getElementById("translateZ").textContent = response.Tz;
+                // Push raw translation data to DataManager
+                DataManager.pushData(['Tx', this.response.Tx, 'Ty', this.response.Ty, 'Tz', this.response.Tz]);
 
-            // Push raw translation data to DataManager
-            DataManager.pushData(['Tx', response.Tx, 'Ty', response.Ty, 'Tz', response.Tz]);
+                  // Push raw translation data to DataManager
+            DataManager.pushData(['Tx', this.response.Tx, 'Ty', this.response.Ty, 'Tz', this.response.Tz]);
 
             // If translation values are all zero, push zeros to DataManager
-            if (response.Tx === 0 && response.Ty === 0 && response.Tz === 0) {
+            if (this.response.Tx === 0 && this.response.Ty === 0 && this.response.Tz === 0) {
                 DataManager.pushData(['TXX', 0, 'TYY', 0, 'TZZ', 0]);
             }
+
 
             /**
              * Declare the values (before filtering, we assign the raw values from the mouse to the 
              * variables which will eventually have filtered values).
              */
 
-            response_filter.Tx_f = response.Tx;
-            response_filter.Ty_f = response.Ty;
-            response_filter.Tz_f = response.Tz;
+            response_filter.Tx_f = this.response.Tx;
+            response_filter.Ty_f = this.response.Ty;
+            response_filter.Tz_f = this.response.Tz;
 
             // Condition 1: Filter values within the range [-0.2, 0.2]
             response_filter.Tx_f = (-0.2 <= response_filter.Tx_f && response_filter.Tx_f <= 0.2) ? 0.0 : response_filter.Tx_f;
@@ -154,29 +123,30 @@ export function handleInputReport(e) {
             console.log("TXX"+ response_filter.Tx_f, "TYY" +response_filter.Ty_f, "TZZ"+ response_filter.Tz_f)
             //DataManager.pushData(['TXX', response_filter.Tx_f, 'TYY', response_filter.Ty_f, 'TZZ', response_filter.Tz_f]);
             
-            freshResponse=false;
+            this.freshResponse=false;
+            this.response_filter.Tx_f = response_filter.Tx_f;
+            this.response_filter.Ty_f = response_filter.Ty_f;
+            this.response_filter.Tz_f = response_filter.Tz_f;
+            break;
 
             
         case 2: // Rotation event
 
             // Get rotation values from the data
-            response.Rx = e.data.getInt16(0, true) / 350;
-            response.Ry = e.data.getInt16(2, true) / 350;
-            response.Rz = e.data.getInt16(4, true) / 350;
+            this.response.Rx = e.data.getInt16(0, true) / 350;
+            this.response.Ry = e.data.getInt16(2, true) / 350;
+            this.response.Rz = e.data.getInt16(4, true) / 350;
         
             // Display rotation values in the console and on the webpage
-            console.log(`Rx: ${response.Rx}, Ry: ${response.Ry}, Rz: ${response.Rz}`);
-            document.getElementById("rotateX").textContent = response.Rx;
-            document.getElementById("rotateY").textContent = response.Ry;
-            document.getElementById("rotateZ").textContent = response.Rz;
+            console.log(`Rx: ${this.response.Rx}, Ry: ${this.response.Ry}, Rz: ${this.response.Rz}`);
         
             // Push raw rotation data to DataManager
-            DataManager.pushData(['Rx', response.Rx, 'Ry', response.Ry, 'Rz', response.Rz]);
+            DataManager.pushData(['Rx', this.response.Rx, 'Ry', this.response.Ry, 'Rz', this.response.Rz]);
         
             // Declare the values for filtering
-            response_filter.Rx_f = response.Rx;
-            response_filter.Ry_f = response.Ry;
-            response_filter.Rz_f = response.Rz;
+            response_filter.Rx_f = this.response.Rx;
+            response_filter.Ry_f = this.response.Ry;
+            response_filter.Rz_f = this.response.Rz;
         
             // Condition_1: Filter values within the range [-0.2, 0.2]
             response_filter.Rx_f = (-0.2 <= response_filter.Rx_f && response_filter.Rx_f <= 0.2) ? 0.0 : response_filter.Rx_f;
@@ -201,7 +171,11 @@ export function handleInputReport(e) {
             console.log("RXX" + response_filter.Rx_f , "RYY"+ response_filter.Ry_f, "RZZ"+response_filter.Rz_f);
             //DataManager.pushData(['RXX', response_filter.Rx_f, 'RYY', response_filter.Ry_f, 'RZZ', response_filter.Rz_f]);
         
-            freshResponse = true;
+            this.freshResponse = true;
+
+            this.response_filter.Rx_f = response_filter.Rx_f;
+            this.response_filter.Ry_f = response_filter.Ry_f;
+            this.response_filter.Rz_f = response_filter.Rz_f;
             break;
 
         case 3:  // key press/release event
@@ -209,15 +183,34 @@ export function handleInputReport(e) {
             // No changes needed here for Tx, Ty, Tz, Rx, Ry, Rz
             break;
     }
-    if (dataCallback !== null && freshResponse) {
-        dataCallback(response_filter)
+    if (this.dataCallback !== null && this.freshResponse) {
+        this.dataCallback(this.response_filter)
     }
-
-
-
-
+    
 }
-window.addEventListener('DOMContentLoaded', (event) => {
-    const button = document.querySelector('button');
-    button.addEventListener('click', selectDevice);   
-});
+}
+
+
+function softmax(Tx, Ty, Tz) {
+    let sum = Math.abs(Tx) + Math.abs(Ty) + Math.abs(Tz);
+
+    return {
+        wx: Math.abs(Tx)/sum,
+        wy: Math.abs(Ty)/sum,     
+        wz: Math.abs(Tz)/sum
+    };
+}
+
+function softmax_r(Rx, Ry, Rz) {
+    let sum = Math.abs(Rx) + Math.abs(Ry) + Math.abs(Rz);
+    console.log("RX"+ Rx)
+    console.log("SUM" + sum)
+
+
+    return {
+        WX: Math.abs(Rx) / sum,
+        WY: Math.abs(Ry) / sum,
+        WZ: Math.abs(Rz) / sum
+    };   
+    
+}
