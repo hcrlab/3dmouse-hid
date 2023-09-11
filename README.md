@@ -2,7 +2,7 @@
 
 Use a 3D mouse as a web input device. Great for controlling robot end effectors.
 
-Originally forked from [webhid-space](https://github.com/larsgk/webhid-space). WebHID is only [supported by Chrome and Edge](https://caniuse.com/?search=webhid) as of August 2023. You may experience issues using WebHID with Chromium in recend Ubuntu releases due to Snap isolation.
+Originally forked from [webhid-space](https://github.com/larsgk/webhid-space). WebHID is only [supported by Chrome and Edge](https://caniuse.com/?search=webhid) as of August 2023. You may experience issues using WebHID with Chromium in recent Ubuntu releases due to Snap isolation.
 
 ## Development
 
