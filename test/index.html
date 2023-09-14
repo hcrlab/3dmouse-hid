@@ -39,9 +39,10 @@
     import { ThreeDMouse } from '../dist/space-driver.js';
     import * as THREE from "https://unpkg.com/three@0.126.1/build/three.module.js"
     import { BufferGeometryUtils } from "https://unpkg.com/three@0.126.1/examples/jsm/utils/BufferGeometryUtils.js";
-    // import { handleInputReport } from '../dist/space-driver.js';
     import * as Scene from '../dist/scene.js';
     import DataManager from '../dist/dataManager.js';
+    import * as Robot from "./main_robot.js";
+    
 
     window.addEventListener('DOMContentLoaded', (event) => {
         if (navigator.hid) {
@@ -53,8 +54,25 @@
 
         const connectButton = document.getElementById('hidButton')
         connectButton.addEventListener('click', () => 
-            ThreeDMouse.requestDevice().then(device => {
-                device.configureCallback(updateMarker)
+        ThreeDMouse.requestDevice().then(device => {
+            device.configureCallback(inputData => {
+                // Process the input data and update the marker
+                updateMarker(inputData);
+
+                // Move the robot based on the input data
+                Robot.move_robot(inputData);
+                
+
+            });
+
+            device.configure_grip(gripdata=>{
+                console.log("1234");
+
+                Robot.gripper(gripdata);
+                console.log(gripdata)
+
+            });
+
                 connectButton.disabled = true;
             }).catch(error => {
                 document.getElementById("errorMessage").innerText = error;
@@ -87,7 +105,6 @@
         // console.log("TXX "+Scene.mergedMesh.position.x + " TYY " +Scene.mergedMesh.position.y +" TZZ " +Scene.mergedMesh.position.z ); // To log all positions at once
         // console.log("RXX "+Scene.mergedMesh.rotation.x + " RYY " +Scene.mergedMesh.rotation.y +" RZZ " +Scene.mergedMesh.rotation.z )
         }
-
 
     function arrayToCSV(data) {
             return data.map(row => row.join(',')).join('\n');

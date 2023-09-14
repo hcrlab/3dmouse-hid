@@ -7,6 +7,7 @@ export class ThreeDMouse {
         navigator.hid.addEventListener("connect", this.handleConnectedDevice);
         navigator.hid.addEventListener("disconnect", this.handleDisconnectedDevice);
         this.dataCallback = null;
+        this.dataCallback_1=null;
         this.freshResponse = false;
         this.response = {
             Tx: null,
@@ -24,9 +25,14 @@ export class ThreeDMouse {
             Ry_f: null,
             Rz_f: null
         };
+        this.value_grip=null
     }
     configureCallback(callback) {
         this.dataCallback = callback
+    }
+    configure_grip(callback_1){
+        this.dataCallback_1=callback_1
+
     }
 
     handleConnectedDevice(e) {
@@ -174,18 +180,41 @@ export class ThreeDMouse {
             this.freshResponse = true;
 
             this.response_filter.Rx_f = response_filter.Rx_f;
-            this.response_filter.Ry_f = response_filter.Ry_f;
+            this.response_filter.Ry_f = response_filter.Ry_f; 
             this.response_filter.Rz_f = response_filter.Rz_f;
             break;
 
         case 3:  // key press/release event
             // Handle key presses based on your requirements
             // No changes needed here for Tx, Ty, Tz, Rx, Ry, Rz
+            const value = e.data.getUint8(0);
+            
+            /*
+                For my SpaceNavigator, a device having two (2) keys only:
+                value is a 2-bit bitmask, allowing 4 key-states:
+                value = 0: no keys pressed
+                value = 1: left key pressed
+                value = 2: right key pressed
+                value = 3: both keys pressed
+                */
+            console.log(value)
+            this.value_grip=value
+            console.log("Left key " + ((value & 1) ? "pressed," : "released,") + "   Right key " + ((value & 2) ? "pressed, " : "released;"));
+            break;
+			
+			default:		// just in case a device exhibits unexpected capabilities  8-)
+				console.log(e.device.productName + ": Received UNEXPECTED input report " + e.reportId);
+				console.log(new Uint8Array(e.data.buffer));
+           
             break;
     }
     if (this.dataCallback !== null && this.freshResponse) {
         this.dataCallback(this.response_filter)
     }
+    if (this.dataCallback_1 !== null) {
+        this.dataCallback_1(this.value_grip)
+    }
+   
     
 }
 }
@@ -214,3 +243,4 @@ function softmax_r(Rx, Ry, Rz) {
     };   
     
 }
+

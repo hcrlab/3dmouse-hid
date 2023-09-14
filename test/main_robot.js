@@ -1,12 +1,13 @@
 import * as SpaceDriver from '../dist/space-driver.js';
-//SpaceDriver.configureCallback(move_robot)
+import { ThreeDMouse } from '../dist/space-driver.js';
 
-//Create a new Ros instance and connect to the Server
+
+// Configure the callback
 
 var ros=new ROSLIB.Ros({
     url : 'ws://127.0.0.1:9090'
 });
-
+ 
 // Event handler for successful connection
 ros.on('connection', function() {
     document.getElementById("status").innerHTML = "Connected";
@@ -29,16 +30,16 @@ var move_robotTopic = new ROSLIB.Topic({
     messageType: 'geometry_msgs/msg/TwistStamped' // Specify the correct message type
 });
 
-function move_robot(report) {
+export function move_robot(report) {
     // Assuming you have a ROS node initialized as 'rosNode'
 
     // Create a Twist message
     var twist = new ROSLIB.Message({
         twist: {
             linear: {
-                x: -report.Tx_f,
+                x: report.Tx_f,
                 y: report.Ty_f,
-                z: -report.Tz_f
+                z: report.Tz_f
             },
             angular: {
                 x: -report.Rx_f,
@@ -52,7 +53,7 @@ function move_robot(report) {
             sec: Math.floor(Date.now() / 1000), // Current time in seconds
             nanosec: (Date.now() % 1000) * 1e6 // Current time in nanoseconds
         },
-        frame_id: 'panda_link0' // Replace with your desired frame_id
+        frame_id: 'panda_hand' // Replace with your desired frame_id
     });
 
     // Assign the header to the TwistStamped message
@@ -62,7 +63,98 @@ function move_robot(report) {
 
     // Publish the Twist message to the topic
     move_robotTopic.publish(twist);
+    
 
     console.log("Published Twist message to robotTopic.");
 }
+ 
+function openGripper() {
+    const actionClient = new ROSLIB.ActionClient({
+      ros: ros,
+      serverName: '/panda_hand_controller/gripper_cmd', // Replace with your action server name
+      actionName: 'control_msgs/GripperCommandAction ' // Replace with your action name
+    });
+
+    const goal = new ROSLIB.Goal({
+      actionClient: actionClient,
+      goalMessage: {
+        command: {
+          position: 0.04,
+          max_effort: 2.0
+        }
+      }
+    });
+
+    goal.on('feedback', function (feedback) {
+      console.log('Feedback:', feedback);
+    });
+
+    goal.on('result', function (result) {
+      console.log('Final Result:', result);
+    });
+
+    console.log('Sending open gripper goal...');
+    goal.send();
+
+    goal.on('result', function (result) {
+      console.log('Open gripper action completed with result:', result);
+    });
+  }
+
+  function closeGripper() {
+    const actionClient = new ROSLIB.ActionClient({
+      ros: ros,
+      serverName: '/panda_hand_controller/gripper_cmd', // Replace with your action server name
+      actionName: 'control_msgs/GripperCommandAction ' // Replace with your action name
+    });
+
+    const goal = new ROSLIB.Goal({
+      actionClient: actionClient,
+      goalMessage: {
+        command: {
+          position: 0.00,
+          max_effort: 1.0
+        }
+      }
+    });
+
+    goal.on('feedback', function (feedback) {
+      console.log('Feedback:', feedback);
+    });
+
+    goal.on('result', function (result) {
+      console.log('Final Result:', result);
+    });
+
+    console.log('Sending close gripper goal...');
+    goal.send();
+
+    goal.on('result', function (result) {
+      console.log('Close gripper action completed with result:', result);
+    });
+  }
+
+
+
+export function gripper(value){
+    switch (value) {
+        case 1:
+        
+        openGripper();
+        break;
+        case 2:
+        
+        closeGripper();
+        break  
+
+    }
+
+    }
+
+    
+
+
+
+
+ 
 
