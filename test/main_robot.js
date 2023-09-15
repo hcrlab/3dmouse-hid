@@ -67,73 +67,32 @@ export function move_robot(report) {
 
     console.log("Published Twist message to robotTopic.");
 }
- 
+const openTopic=new ROSLIB.Topic({
+  ros:ros,
+  name:'/open_grip',
+  messageType:'std_msgs/Empty'
+});
+
 function openGripper() {
-    const actionClient = new ROSLIB.ActionClient({
-      ros: ros,
-      serverName: '/panda_hand_controller/gripper_cmd', // Replace with your action server name
-      actionName: 'control_msgs/action/GripperCommand ' // Replace with your action name
-    });
-
-    const goal = new ROSLIB.Goal({
-      actionClient: actionClient,
-      goalMessage: {
-        command: {
-          position: 0.04,
-          max_effort: 2.0
-        }
-      }
-    });
-
-    goal.on('feedback', function (feedback) {
-      console.log('Feedback:', feedback);
-    });
-
-    goal.on('result', function (result) {
-      console.log('Final Result:', result);
-    });
-
-    console.log('Sending open gripper goal...');
-    goal.send();
-
-    goal.on('result', function (result) {
-      console.log('Open gripper action completed with result:', result);
-    });
-  }
-
-  function closeGripper() {
-    const actionClient = new ROSLIB.ActionClient({
-      
-      ros: ros,
-      serverName: '/panda_hand_controller/gripper_cmd', // Replace with your action server name
-      actionName: 'control_msgs/GripperCommandAction ' // Replace with your action name
-    });
+  console.log("Open gripper")
+  const message=new ROSLIB.Message({
+  });
+  openTopic.publish(message)
     
-    const goal = new ROSLIB.Goal({
-      actionClient: actionClient,
-      goalMessage: {
-        command: {
-          position: 0.00,
-          max_effort: 1.0
-        }
-      }
-    });
+}
 
-    goal.on('feedback', function (feedback) {
-      console.log('Feedback:', feedback);
-    });
+const closeTopic=new ROSLIB.Topic({
+  ros:ros,
+  name:'/close_grip',
+  messageType:'std_msgs/Empty'
+});
 
-    goal.on('result', function (result) {
-      console.log('Final Result:', result);
-    });
-
-    console.log('Sending close gripper goal...');
-    goal.send();
-
-    goal.on('result', function (result) {
-      console.log('Close gripper action completed with result:', result);
-    });
-  }
+function closeGripper() {
+  console.log("Open gripper")
+  const message=new ROSLIB.Message({
+  });
+  closeTopic.publish(message)
+}
 
 
 
