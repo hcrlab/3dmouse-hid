@@ -72,7 +72,7 @@ function openGripper() {
     const actionClient = new ROSLIB.ActionClient({
       ros: ros,
       serverName: '/panda_hand_controller/gripper_cmd', // Replace with your action server name
-      actionName: 'control_msgs/GripperCommandAction ' // Replace with your action name
+      actionName: 'control_msgs/action/GripperCommand ' // Replace with your action name
     });
 
     const goal = new ROSLIB.Goal({
@@ -103,11 +103,12 @@ function openGripper() {
 
   function closeGripper() {
     const actionClient = new ROSLIB.ActionClient({
+      
       ros: ros,
       serverName: '/panda_hand_controller/gripper_cmd', // Replace with your action server name
       actionName: 'control_msgs/GripperCommandAction ' // Replace with your action name
     });
-
+    
     const goal = new ROSLIB.Goal({
       actionClient: actionClient,
       goalMessage: {
