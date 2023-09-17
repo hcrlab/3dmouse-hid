@@ -37,8 +37,8 @@ export function move_robot(report) {
     var twist = new ROSLIB.Message({
         twist: {
             linear: {
-                x: report.Tx_f,
-                y: report.Ty_f,
+                x: -report.Tx_f,
+                y: -report.Ty_f,
                 z: report.Tz_f
             },
             angular: {
