@@ -1,5 +1,3 @@
-
-
 export class ThreeDMouse {
     constructor(device) {
         this.device = device;
