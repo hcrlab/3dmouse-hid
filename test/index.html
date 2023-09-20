@@ -14,34 +14,33 @@
         canvas {
             display: block;
         }
+        #inputViz {
+            width: 400px;
+            height: 400px;
+        }
     </style>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/uplot@1.6.25/dist/uPlot.min.css" integrity="sha256-32MMao1vjur/JktQ9zzlsRT2Rv/ZoLt08EmwoAE1+gQ=" crossorigin="anonymous">
 </head>
 <body>
     <p id="errorMessage">WebHID is not available. Are you using Chrome or Edge? Are you running from <tt>localhost</tt> or HTTPS?</p>
     <button id="hidButton" style="display: none;">Request HID Device</button>
     <button id="downloadButton">DownloadCSV</button>
-    <!-- <script type="module" src="main_robot.js"></script> --> 
     <p class="text">Connection status: <span class="text" id="status"></span></p>
-    <div>
-        <p><strong>Translation:</strong></p>
-        <p>X: <span id="translateX">0</span></p>
-        <p>Y: <span id="translateY">0</span></p>
-        <p>Z: <span id="translateZ">0</span></p>
 
-        <p><strong>Rotation (RPY):</strong></p>
-        <p>Roll (Rx): <span id="rotateX">0</span></p>
-        <p>Pitch (Ry): <span id="rotateY">0</span></p>
-        <p>Yaw (Rz): <span id="rotateZ">0</span></p>
-    </div>
+    <div id="plot"></div>
+    <div id="inputViz"></div>
 </body>
 <script type="module">
     import { ThreeDMouse } from '../dist/space-driver.js';
     import * as THREE from "https://unpkg.com/three@0.126.1/build/three.module.js"
     import { BufferGeometryUtils } from "https://unpkg.com/three@0.126.1/examples/jsm/utils/BufferGeometryUtils.js";
-    import * as Scene from '../dist/scene.js';
+    import {TwistViz} from '../dist/scene.js';
     import DataManager from '../dist/dataManager.js';
     import * as Robot from "./main_robot.js";
+    import uPlot from 'https://cdn.jsdelivr.net/npm/uplot@1.6.25/+esm'
     
+
+    let twistViz = null;
 
     window.addEventListener('DOMContentLoaded', (event) => {
         if (navigator.hid) {
@@ -50,25 +49,21 @@
         } else {
             return
         }
-
+        
         const connectButton = document.getElementById('hidButton')
         connectButton.addEventListener('click', () => 
         ThreeDMouse.requestDevice().then(device => {
-            device.configureCallback(inputData => {
+            twistViz = new TwistViz(document.getElementById("inputViz"));
+            twistViz.begin()
+            window.addEventListener("3dmouseinput", event => {
+                let values = event.detail.controlValue
                 // Process the input data and update the marker
-                updateMarker(inputData);
+                twistViz.setTwist([values.Tx_f, values.Ty_f, values.Tz_f, values.Rx_f, values.Ry_f, values.Rz_f]);
 
                 // Move the robot based on the input data
-                Robot.move_robot(inputData);
-                
+                Robot.move_robot(event.detail.controlValue);
 
-            });
-
-            device.configure_grip(gripdata=>{
-                console.log("1234");
-
-                Robot.gripper(gripdata);
-                console.log(gripdata)
+                Robot.gripper(event.detail.buttonValue);
 
             });
 
@@ -79,31 +74,6 @@
         );
         document.getElementById('downloadButton').addEventListener('click', downloadAccumulatedData);
     });
-    function updateMarker(report) {
-        if (report.Tx_f === 0 && report.Ty_f === 0 && report.Tz_f === 0) {
-            Scene.frametoinistialstate();
-        }
-
-        Scene.mergedMesh.position.x = -report.Tx_f
-        Scene.mergedMesh.position.z = -report.Ty_f
-        Scene.mergedMesh.position.y = -report.Tz_f
-
-        Scene.mergedMesh.rotation.x = -report.Rx_f 
-        Scene.mergedMesh.rotation.z = -report.Ry_f 
-        Scene.mergedMesh.rotation.y = -report.Rz_f
-
-        document.getElementById("translateX").textContent = report.Tx_f;
-        document.getElementById("translateY").textContent = report.Ty_f;
-        document.getElementById("translateZ").textContent = report.Tz_f;
-
-        document.getElementById("rotateX").textContent = report.Rx_f;
-        document.getElementById("rotateY").textContent = report.Ry_f;
-        document.getElementById("rotateZ").textContent = report.Rz_f;
-
-
-        // console.log("TXX "+Scene.mergedMesh.position.x + " TYY " +Scene.mergedMesh.position.y +" TZZ " +Scene.mergedMesh.position.z ); // To log all positions at once
-        // console.log("RXX "+Scene.mergedMesh.rotation.x + " RYY " +Scene.mergedMesh.rotation.y +" RZZ " +Scene.mergedMesh.rotation.z )
-        }
 
     function arrayToCSV(data) {
             return data.map(row => row.join(',')).join('\n');
@@ -122,15 +92,115 @@
         document.body.removeChild(link);
     }
         
-        
-    // Set initial camera state when starting
-    Scene.setCameraToInitialState();
-
 
     function downloadAccumulatedData() {
         const csvContent = arrayToCSV(DataManager.getData());
         downloadCSV(csvContent, "output.csv");
     }
+
+
+    function makePlot(container, data) {
+        let fmtVal = (u, raw, sidx, didx) => {
+				if (didx == null) {
+					let d = u.data[sidx];
+					return `${d[d.length - 1].toFixed(2)} (last)`;
+				}
+
+				return raw == null ? '' : raw;
+			};
+        const opts = {
+            title: "",
+            width: 800,
+            height: 200,
+            cursor: {
+						drag: {
+							setScale: false,
+						}
+					},
+					select: {
+						show: false,
+					},
+            scales: {
+                "x": {
+                    time: false
+                },
+                "%": {
+                    auto: false,
+                    range: [-1, 1],
+                }
+            },
+            series: [
+                {},
+                {
+                    label: "X",
+                    scale: "%",
+                    stroke: "red",
+                    value: fmtVal
+                },
+                {
+                    label: "Y",
+                    scale: "%",
+                    stroke: "green",
+                    value: fmtVal
+                },
+                {
+                    label: "Z",
+                    scale: "%",
+                    stroke: "blue",
+                    value: fmtVal
+                },
+                {
+                    label: "R",
+                    scale: "%",
+                    stroke: "cyan",
+                    value: fmtVal
+                },
+                {
+                    label: "P",
+                    scale: "%",
+                    stroke: "yellow",
+                    value: fmtVal
+                },
+                {
+                    label: "Y",
+                    scale: "%",
+                    stroke: "magenta",
+                    value: fmtVal
+                },
+            ],
+            axes: [
+                {},
+                {
+                    scale: '%',
+                    values: (u, vals, space) => vals.map(v => +v.toFixed(1)),
+                }
+            ]
+        };
+
+        return new uPlot(opts, data, container);
+    }
+
+    let data = [[...Array(600).keys()]]
+    for (let i = 1; i < 7; i++) {
+        data.push(new Array(600).fill(0))
+    }
+    let i = 600;
+    let plot = makePlot(document.getElementById("plot"), data);
+    window.addEventListener("3dmouseinput", event => {
+        data.forEach((d, i) => {
+            d.shift()
+        })
+        data[0].push(i)
+        data[1].push(event.detail.controlValue.Tx_f)
+        data[2].push(event.detail.controlValue.Ty_f)
+        data[3].push(event.detail.controlValue.Tz_f)
+        data[4].push(event.detail.controlValue.Rx_f)
+        data[5].push(event.detail.controlValue.Ry_f)
+        data[6].push(event.detail.controlValue.Rz_f)
+        plot.setData(data)
+        i+= 1
+    })
+
 
 </script>
 </html>

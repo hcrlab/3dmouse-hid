@@ -1,103 +1,79 @@
-import * as THREE from "https://unpkg.com/three@0.126.1/build/three.module.js"
-import { BufferGeometryUtils } from "https://unpkg.com/three@0.126.1/examples/jsm/utils/BufferGeometryUtils.js";
+import * as THREE from "https://unpkg.com/three@0.156.1/build/three.module.js"
+import {AxesHelper} from "https://unpkg.com/three@0.156.1/build/three.module.js"
 
+export class TwistViz {
 
+    constructor(container) {
+        this.container = container
+        this.scene = new THREE.Scene();
+        this.anchorMarker = new AxesHelper(5);
+        this.anchorMarker.setColors(0xaa0000, 0x00aa00, 0x000aa);
+        this.movingMarker = new AxesHelper(20);
+        this.movingMarker.setColors(0xff0000, 0x00ff00, 0x000ff);
+        this.scene.add(this.movingMarker);
+        this.scene.add(this.anchorMarker);
+        this._animationRequest = null;
+        // Camera
+        this.camera = new THREE.PerspectiveCamera(100, container.innerWidth / container.innerHeight, 0.6, 1000);
+        // Renderer
+        this.renderer = new THREE.WebGLRenderer({antialias: true});
+        this.renderer.setClearColor("#233143"); // Set background colour
+        container.appendChild(this.renderer.domElement); // Add renderer to HTML as a
+        this.renderer.setSize(container.clientWidth, container.clientHeight);
+        // Add ambient light
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
+        this.scene.add(ambientLight);
 
-// Scene
-const scene = new THREE.Scene();
-export function setCameraToInitialState() {
-    camera.position.set(30, 5, 2);
-    camera.lookAt(0, 0, 0);
-}
-export function frametoinistialstate(){
-    mergedMesh.position.x=0;
-    mergedMesh.position.y=0;
-    mergedMesh.position.z=0;
-    mergedMesh.rotation.x =0;
-    mergedMesh.rotation.y =0;
-    mergedMesh.rotation.z =0;
+        this._resizeObserver = new ResizeObserver(this._elementResized.bind(this)).observe(container);
 
-}
-
-
-//Red X-axis
-const curveX = new THREE.LineCurve3(
-    new THREE.Vector3(0, 0, 0),
-    new THREE.Vector3(10, 0, 0)
-);
-const geometryX = new THREE.TubeBufferGeometry(curveX, 64, 0.1, 8, false);
-const materialX = new THREE.MeshLambertMaterial({color: 0xff0000});
-const meshX = new THREE.Mesh(geometryX, materialX);
-
-
-// Green Y-axis
-const curveY = new THREE.LineCurve3(
-    new THREE.Vector3(0, 0, 0),
-    new THREE.Vector3(0, 10, 0)
-);
-const geometryY = new THREE.TubeBufferGeometry(curveY, 64, 0.1, 8, false);
-const materialY = new THREE.MeshLambertMaterial({color: 0x00ff00});
-const meshY = new THREE.Mesh(geometryY, materialY);
-
-
-// // Blue Z-axis
-const curveZ = new THREE.LineCurve3(
-    new THREE.Vector3(0, 0, 0),
-    new THREE.Vector3(0, 0, -10)
-);
-const geometryZ = new THREE.TubeBufferGeometry(curveZ, 64, 0.1, 8, false);
-const materialZ = new THREE.MeshLambertMaterial({color: 0x0000ff});
-const meshZ = new THREE.Mesh(geometryZ, materialZ);
-
-
-
-
-export function setVertexColors(geometry, color) {
-    const colors = [];
-    for (let i = 0; i < geometry.attributes.position.count; i++) {
-        colors.push(color.r, color.g, color.b);
     }
-    geometry.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
+
+    begin() {
+        this.setCameraToInitialState();
+        this.reset();
+        this._render();
+    }
+
+    stop() {
+        cancelAnimationFrame(this._animationRequest);
+    }
+
+    setTwist(twist) {
+        let marker = this.movingMarker
+        marker.position.x = -twist[0] * 6 
+        marker.position.z = -twist[1] * 6
+        marker.position.y = -twist[2] * 4
+
+        marker.rotation.x = -twist[3] 
+        marker.rotation.z = -twist[4] 
+        marker.rotation.y = -twist[5]
+    }
+
+    _render() {
+        this.renderer.setClearColor("#000000"); // Black background
+        this.renderer.render(this.scene, this.camera);
+        this._animationRequest = requestAnimationFrame(this._render.bind(this));
+    }
+
+    _elementResized(_) {
+        this.renderer.setSize(this.container.clientWidth, this.container.clientHeight);
+        this.camera.aspect = this.container.clientWidth / this.container.clientHeight; 
+        this.camera.updateProjectionMatrix();
+    }
+
+    setCameraToInitialState() {
+        this.camera.position.set(30, 5, 2);
+        this.camera.lookAt(0, 0, 0);
+    }
+
+    reset(){
+        this.movingMarker.position.x=0;
+        this.movingMarker.position.y=0;
+        this.movingMarker.position.z=0;
+        this.movingMarker.rotation.x =0;
+        this.movingMarker.rotation.y =0;
+        this.movingMarker.rotation.z =0;
+    
+    }
+
 }
-
-// Set vertex colors for each geometry
-setVertexColors(geometryX, new THREE.Color(0xff0000));
-setVertexColors(geometryY, new THREE.Color(0x0000ff));
-setVertexColors(geometryZ, new THREE.Color(0x00ff00));
-
-// Merge the geometries
-const mergedGeometry = BufferGeometryUtils.mergeBufferGeometries([geometryX, geometryY, geometryZ]);
-
-// Use a material that respects vertex colors
-const mergedMaterial = new THREE.MeshBasicMaterial({ vertexColors: true });
-
-export const mergedMesh = new THREE.Mesh(mergedGeometry, mergedMaterial);
-scene.add(mergedMesh);
-
-// Camera
-const camera = new THREE.PerspectiveCamera(100, window.innerWidth / window.innerHeight, 0.6, 2000);
-// Renderer
-const renderer = new THREE.WebGLRenderer({antialias: true});
-renderer.setClearColor("#233143"); // Set background colour
-renderer.setSize(window.innerWidth, window.innerHeight);
-document.body.appendChild(renderer.domElement); // Add renderer to HTML as a canvas element
-// Make Canvas Responsive
-window.addEventListener('resize', () => {
-    renderer.setSize(window.innerWidth, window.innerHeight); // Update size
-    camera.aspect = window.innerWidth / window.innerHeight; // Update aspect ratio
-    camera.updateProjectionMatrix(); // Apply changes
-})
-
-
-// Add ambient light
-const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
-scene.add(ambientLight);
-
-
-// Rendering
-const rendering = function() {
-    requestAnimationFrame(rendering);
-    renderer.setClearColor("#000000"); // Black background
-    renderer.render(scene, camera);
-}
-rendering();

@@ -1,4 +1,4 @@
-import DataManager from './dataManager.js';
+
 
 export class ThreeDMouse {
     constructor(device) {
@@ -6,8 +6,6 @@ export class ThreeDMouse {
         this.device.addEventListener("inputreport", this.handleInputReport.bind(this));
         navigator.hid.addEventListener("connect", this.handleConnectedDevice);
         navigator.hid.addEventListener("disconnect", this.handleDisconnectedDevice);
-        this.dataCallback = null;
-        this.dataCallback_1=null;
         this.freshResponse = false;
         this.response = {
             Tx: null,
@@ -25,14 +23,7 @@ export class ThreeDMouse {
             Ry_f: null,
             Rz_f: null
         };
-        this.value_grip=null
-    }
-    configureCallback(callback) {
-        this.dataCallback = callback
-    }
-    configure_grip(callback_1){
-        this.dataCallback_1=callback_1
-
+        this.buttonValue=null
     }
 
     handleConnectedDevice(e) {
@@ -83,21 +74,6 @@ export class ThreeDMouse {
                 this.response.Ty = e.data.getInt16(2, true) / 350;
                 this.response.Tz = e.data.getInt16(4, true) / 350;
 
-                // Display translation values in the console and on the webpage
-                console.log(`Tx: ${this.response.Tx}, Ty: ${this.response.Ty}, Tz: ${this.response.Tz}`);
-
-                // Push raw translation data to DataManager
-                DataManager.pushData(['Tx', this.response.Tx, 'Ty', this.response.Ty, 'Tz', this.response.Tz]);
-
-                  // Push raw translation data to DataManager
-            DataManager.pushData(['Tx', this.response.Tx, 'Ty', this.response.Ty, 'Tz', this.response.Tz]);
-
-            // If translation values are all zero, push zeros to DataManager
-            if (this.response.Tx === 0 && this.response.Ty === 0 && this.response.Tz === 0) {
-                DataManager.pushData(['TXX', 0, 'TYY', 0, 'TZZ', 0]);
-            }
-
-
             /**
              * Declare the values (before filtering, we assign the raw values from the mouse to the 
              * variables which will eventually have filtered values).
@@ -125,10 +101,6 @@ export class ThreeDMouse {
                 response_filter.Tz_f = response_filter.Tz_f * wz;
             }
             
-            // Push filtered translation data to DataManager
-            console.log("TXX"+ response_filter.Tx_f, "TYY" +response_filter.Ty_f, "TZZ"+ response_filter.Tz_f)
-            //DataManager.pushData(['TXX', response_filter.Tx_f, 'TYY', response_filter.Ty_f, 'TZZ', response_filter.Tz_f]);
-            
             this.freshResponse=false;
             this.response_filter.Tx_f = response_filter.Tx_f;
             this.response_filter.Ty_f = response_filter.Ty_f;
@@ -142,12 +114,6 @@ export class ThreeDMouse {
             this.response.Rx = e.data.getInt16(0, true) / 350;
             this.response.Ry = e.data.getInt16(2, true) / 350;
             this.response.Rz = e.data.getInt16(4, true) / 350;
-        
-            // Display rotation values in the console and on the webpage
-            console.log(`Rx: ${this.response.Rx}, Ry: ${this.response.Ry}, Rz: ${this.response.Rz}`);
-        
-            // Push raw rotation data to DataManager
-            DataManager.pushData(['Rx', this.response.Rx, 'Ry', this.response.Ry, 'Rz', this.response.Rz]);
         
             // Declare the values for filtering
             response_filter.Rx_f = this.response.Rx;
@@ -173,10 +139,6 @@ export class ThreeDMouse {
                 response_filter.Rz_f = response_filter.Rz_f * WZ;
             }
         
-            // Display filtered values and push them to DataManager
-            console.log("RXX" + response_filter.Rx_f , "RYY"+ response_filter.Ry_f, "RZZ"+response_filter.Rz_f);
-            //DataManager.pushData(['RXX', response_filter.Rx_f, 'RYY', response_filter.Ry_f, 'RZZ', response_filter.Rz_f]);
-        
             this.freshResponse = true;
 
             this.response_filter.Rx_f = response_filter.Rx_f;
@@ -197,24 +159,28 @@ export class ThreeDMouse {
                 value = 2: right key pressed
                 value = 3: both keys pressed
                 */
-            console.log(value)
-            this.value_grip=value
-            console.log("Left key " + ((value & 1) ? "pressed," : "released,") + "   Right key " + ((value & 2) ? "pressed, " : "released;"));
+            this.buttonValue = value
             break;
 			
-			default:		// just in case a device exhibits unexpected capabilities  8-)
+        default:		// just in case a device exhibits unexpected capabilities  8-)
 				console.log(e.device.productName + ": Received UNEXPECTED input report " + e.reportId);
 				console.log(new Uint8Array(e.data.buffer));
            
             break;
     }
-    if (this.dataCallback !== null && this.freshResponse) {
-        this.dataCallback(this.response_filter)
+    if (!this.freshResponse) {
+        return;
     }
-    if (this.dataCallback_1 !== null) {
-        this.dataCallback_1(this.value_grip)
-    }
-   
+    // Create a new event
+    let outEvent = new CustomEvent('3dmouseinput', {
+        bubbles: true,
+        cancelable: true,
+        detail: {
+            controlValue: this.response_filter,
+            buttonValue: this.buttonValue
+        }
+    });
+    window.dispatchEvent(outEvent);
     
 }
 }
@@ -232,9 +198,6 @@ function softmax(Tx, Ty, Tz) {
 
 function softmax_r(Rx, Ry, Rz) {
     let sum = Math.abs(Rx) + Math.abs(Ry) + Math.abs(Rz);
-    console.log("RX"+ Rx)
-    console.log("SUM" + sum)
-
 
     return {
         WX: Math.abs(Rx) / sum,
