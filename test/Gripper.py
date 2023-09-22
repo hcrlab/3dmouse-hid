@@ -7,7 +7,7 @@ from std_msgs.msg import Empty
 class GripperControlNode(Node):
     def __init__(self):
         super().__init__('gripper_control_node')
-        self.gripper_action_client = ActionClient(self, GripperCommand, '/panda_hand_controller/gripper_cmd')
+        self.gripper_action_client = ActionClient(self, GripperCommand, '/panda_handleft_controller/gripper_cmd')
         open_gripper_subscription=self.create_subscription(Empty,'/open_grip', self.open_gripper,10)
         close_gripper_subscription=self.create_subscription(Empty,'/close_grip', self.close_gripper,10)
 

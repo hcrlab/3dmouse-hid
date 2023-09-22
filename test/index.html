@@ -4,22 +4,38 @@
     <meta charset="UTF-8">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
+    <!-- <h1 style="color: rgb(240, 72, 6); text-align: center;">SpaceMouse Controller</h1> -->
+    <style>
+    .black-textbox {
+        display: block;
+        margin: 20px auto;  /* Centers the textbox */
+        background-color: black;
+        color: rgb(102, 5, 5);  /* Text color */
+        font-size: 28px;  /* Increase font size as per requirement */
+        border: none;
+        padding: 10px;
+        width: 300px;  /* Width of the textbox */
+        }
+
+    .black-textbox:focus {
+        outline: none;
+        border: 2px solid red;  /* Focus border color */
+    }
+
+    .black-textbox::placeholder { /* Placeholder style */
+        color: rgba(255, 12, 12, 0.6); /* Light red for placeholder text */
+    }
+
+    </style>
     <!-- <script src="https://cdnjs.cloudflare.com/ajax/libs/roslibjs/0.20.0/roslib.min.js"></script> -->
     <script src="./roslibjs/build/roslib.js"></script>
     <!-- <script type="text/javascript" src="http://static.robotwebtools.org/roslibjs/current/roslib.min.js"></script> -->
     <script type="module" src="main_robot.js"></script>
     <script type="module" src="../dist/space-driver.js"></script>
-    <style>
-        body {
-            margin: 0px;
-            height: 100vh;
-        }
-        canvas {
-            display: block;
-        }
-    </style>
 </head>
 <body>
+    <input type="text" class="black-textbox" placeholder="Space Mouse Controller">
+    <body style="background-color: rgb(154, 144, 144);">
     <p id="errorMessage">WebHID is not available. Are you using Chrome or Edge? Are you running from <tt>localhost</tt> or HTTPS?</p>
     <button id="hidButton" style="display: none;">Request HID Device</button>
     <button id="downloadButton">DownloadCSV</button>
@@ -35,16 +51,25 @@
         <p>Roll (Rx): <span id="rotateX">0</span></p>
         <p>Pitch (Ry): <span id="rotateY">0</span></p>
         <p>Yaw (Rz): <span id="rotateZ">0</span></p>
+       
+        <button id="rotateButton">Rotate</button>
+        <button id="translateButton">Translate</button>
+        <button id="Both(T+R)">Both(T+R)</button>
+        
     </div>
 </body>
 <script type="module">
+    window.movefront=null
+    window.movetop=null
+    window.moveside=null
+    window.actionType=null
+
     import { ThreeDMouse } from '../dist/space-driver.js';
     import * as THREE from "https://unpkg.com/three@0.126.1/build/three.module.js"
     import { BufferGeometryUtils } from "https://unpkg.com/three@0.126.1/examples/jsm/utils/BufferGeometryUtils.js";
     import * as Scene from '../dist/scene.js';
     import DataManager from '../dist/dataManager.js';
     import * as Robot from "./main_robot.js";
-    
 
     window.addEventListener('DOMContentLoaded', (event) => {
         if (navigator.hid) {
@@ -62,16 +87,35 @@
                 updateMarker(inputData);
 
                 // Move the robot based on the input data
-                Robot.move_robot(inputData);
                 
+                
+                if(window.actionType==='action0'){
+                    // console.log("123")
+                    window.movefront=Robot.move_robotf(inputData)
+                    
+                }
+                else if (window.actionType==='action1'){
+                    // console.log("aaa")
+                    window.movetop=Robot.move_robott(inputData)
+                }
+                else if (window.actionType==='action2'){
+                    // console.log("aaa")
+                    window.moveside=Robot.move_robots(inputData)
+                }
+                //by default the code will run in this case if user did'nt select any frame (Top frame)
+                else{
+                    Robot.move_robott(inputData);
+                }
+ 
 
             });
+            
 
             device.configure_grip(gripdata=>{
-                console.log("1234");
+                // console.log("1234");
 
                 Robot.gripper(gripdata);
-                console.log(gripdata)
+                // console.log(gripdata)
 
             });
 
@@ -106,6 +150,7 @@
 
         // console.log("TXX "+Scene.mergedMesh.position.x + " TYY " +Scene.mergedMesh.position.y +" TZZ " +Scene.mergedMesh.position.z ); // To log all positions at once
         // console.log("RXX "+Scene.mergedMesh.rotation.x + " RYY " +Scene.mergedMesh.rotation.y +" RZZ " +Scene.mergedMesh.rotation.z )
+
         }
 
     function arrayToCSV(data) {
@@ -118,7 +163,7 @@
         const url = URL.createObjectURL(blob);
         link.setAttribute("href", url);
         link.setAttribute("download", fileName);
-        link.style.visibility = 'hidden';
+        link.style.visibility = 'hidden'; 
         
         document.body.appendChild(link);
         link.click();
@@ -134,6 +179,101 @@
         const csvContent = arrayToCSV(DataManager.getData());
         downloadCSV(csvContent, "output.csv");
     }
+
+</script>
+<!-- <img id="cameraFeed" alt="Camera Feed" width="640" height="480"> -->
+
+
+<div style="display: flex; justify-content: space-between; align-items: center;">
+    <div style="display: flex; flex-direction: column; align-items: center;">
+        <img id="displayedImageCamera0" alt="Camera 0 Feed" style="width: 700px; height: 400px; display: block; border: 3px solid black;">
+        <button onclick="activateButton(this, 'action0')">Front View</button>
+    </div>
+    
+    <div style="display: flex; flex-direction: column; align-items: center;">
+        <img id="displayedImageCamera1" alt="Camera 1 Feed" style="width: 700px; height: 400px; display: block; border: 3px solid black;">
+        <button onclick="activateButton(this, 'action1')">Top View</button>
+    </div>
+    
+    <div style="display: flex; flex-direction: column; align-items: center;">
+        <img id="displayedImageCamera2" alt="Camera 2 Feed" style="width: 700px; height: 400px; display: block; border: 3px solid black;">
+        <button onclick="activateButton(this, 'action2')">Side View</button>
+    </div>
+</div>
+
+<script type ="module">
+    import * as Robot from "./main_robot.js";
+    let activeButton = null; 
+
+    function activateButton(clickedButton, actionType) {
+        const enlargedWidth = '800px';
+        const enlargedHeight = '450px';
+        const reducedWidth = '600px';
+        const reducedHeight = '400px';
+
+        // Reset all images to their reduced size
+        let images = document.querySelectorAll('img');
+        for (let img of images) {
+            img.style.width = reducedWidth;
+            img.style.height = reducedHeight;
+            img.style.margin = '0';  // Reset the margins
+        }
+
+        // Reset the previous active button (if any)
+        if (activeButton) {
+            activeButton.style.backgroundColor = '';
+        }
+       
+        // Execute the functionality based on the action type
+        switch (actionType) {
+            case 'action0':
+                window.actionType='action0'
+                window.globalInputData =window.movefront
+                adjustImageSize('displayedImageCamera0', enlargedWidth, enlargedHeight);
+                break;
+            case 'action1':
+                window.actionType='action1'
+                window.globalInputData =window.movetop
+                adjustImageSize('displayedImageCamera1', enlargedWidth, enlargedHeight);
+                break;
+            case 'action2':
+                window.actionType='action2'
+                window.globalInputData =window.moveside
+                adjustImageSize('displayedImageCamera2', enlargedWidth, enlargedHeight);
+                break;
+            default:
+                alert('Unknown action!');
+        }
+
+        // Activate the clicked button
+        clickedButton.style.backgroundColor = 'red';
+
+        // Update the active button reference
+        activeButton = clickedButton;
+
+    }
+    window.activateButton = activateButton;
+
+    function adjustImageSize(imageId, width, height) {
+        let img = document.getElementById(imageId);
+        let widthDifference = parseInt(width) - img.clientWidth;
+        let heightDifference = parseInt(height) - img.clientHeight;
+        
+        img.style.width = width;
+        img.style.height = height;
+        img.style.margin = `-${heightDifference / 2}px -${widthDifference / 2}px`;  // Adjust margins
+    }
+</script>
+
+
+
+
+
+
+<input type="range" min="0" max="100" value="50" id="myRange">
+<p>Value: <span id="demo"></span></p>
+<script type ="module">
+    import * as Robot from "./main_robot.js";
 
 </script>
 </html>

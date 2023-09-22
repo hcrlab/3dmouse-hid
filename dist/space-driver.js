@@ -84,7 +84,7 @@ export class ThreeDMouse {
                 this.response.Tz = e.data.getInt16(4, true) / 350;
 
                 // Display translation values in the console and on the webpage
-                console.log(`Tx: ${this.response.Tx}, Ty: ${this.response.Ty}, Tz: ${this.response.Tz}`);
+                // console.log(`Tx: ${this.response.Tx}, Ty: ${this.response.Ty}, Tz: ${this.response.Tz}`);
 
                 // Push raw translation data to DataManager
                 DataManager.pushData(['Tx', this.response.Tx, 'Ty', this.response.Ty, 'Tz', this.response.Tz]);
@@ -126,7 +126,7 @@ export class ThreeDMouse {
             }
             
             // Push filtered translation data to DataManager
-            console.log("TXX"+ response_filter.Tx_f, "TYY" +response_filter.Ty_f, "TZZ"+ response_filter.Tz_f)
+            // console.log("TXX"+ response_filter.Tx_f, "TYY" +response_filter.Ty_f, "TZZ"+ response_filter.Tz_f)
             //DataManager.pushData(['TXX', response_filter.Tx_f, 'TYY', response_filter.Ty_f, 'TZZ', response_filter.Tz_f]);
             
             this.freshResponse=false;
@@ -144,7 +144,7 @@ export class ThreeDMouse {
             this.response.Rz = e.data.getInt16(4, true) / 350;
         
             // Display rotation values in the console and on the webpage
-            console.log(`Rx: ${this.response.Rx}, Ry: ${this.response.Ry}, Rz: ${this.response.Rz}`);
+            // console.log(`Rx: ${this.response.Rx}, Ry: ${this.response.Ry}, Rz: ${this.response.Rz}`);
         
             // Push raw rotation data to DataManager
             DataManager.pushData(['Rx', this.response.Rx, 'Ry', this.response.Ry, 'Rz', this.response.Rz]);
@@ -174,7 +174,7 @@ export class ThreeDMouse {
             }
         
             // Display filtered values and push them to DataManager
-            console.log("RXX" + response_filter.Rx_f , "RYY"+ response_filter.Ry_f, "RZZ"+response_filter.Rz_f);
+            // console.log("RXX" + response_filter.Rx_f , "RYY"+ response_filter.Ry_f, "RZZ"+response_filter.Rz_f);
             //DataManager.pushData(['RXX', response_filter.Rx_f, 'RYY', response_filter.Ry_f, 'RZZ', response_filter.Rz_f]);
         
             this.freshResponse = true;
@@ -197,7 +197,7 @@ export class ThreeDMouse {
                 value = 2: right key pressed
                 value = 3: both keys pressed
                 */
-            console.log(value)
+            // console.log(value)
             this.value_grip=value
             console.log("Left key " + ((value & 1) ? "pressed," : "released,") + "   Right key " + ((value & 2) ? "pressed, " : "released;"));
             break;
