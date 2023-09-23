@@ -37,14 +37,14 @@ export function move_robot(report) {
     var twist = new ROSLIB.Message({
         twist: {
             linear: {
-                x: report.Tx_f,
-                y: -report.Ty_f,
+                x: -report.Ty_f,
+                y: report.Tx_f,
                 z: report.Tz_f
             },
             angular: {
-                x: -report.Rx_f,
-                y: report.Ry_f,
-                z: -report.Rz_f
+                x: report.Ry_f,
+                y: -report.Rx_f,
+                z: report.Rz_f
             }
         }
     });
@@ -53,7 +53,7 @@ export function move_robot(report) {
             sec: Math.floor(Date.now() / 1000), // Current time in seconds
             nanosec: (Date.now() % 1000) * 1e6 // Current time in nanoseconds
         },
-        frame_id: 'panda_hand' // Replace with your desired frame_id
+        frame_id: 'wrist_3_link' // Replace with your desired frame_id
     });
 
     // Assign the header to the TwistStamped message
