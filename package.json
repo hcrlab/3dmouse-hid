@@ -15,6 +15,7 @@
   ],
   "author": "Varad Dhat",
   "license": "BSD-2-Clause",
-  "devDependencies": {
+  "dependencies": {
+    "jpeg-js": "^0.4.4"
   }
 }

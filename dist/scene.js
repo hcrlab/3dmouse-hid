@@ -6,7 +6,7 @@ import { BufferGeometryUtils } from "https://unpkg.com/three@0.126.1/examples/js
 // Scene
 const scene = new THREE.Scene();
 export function setCameraToInitialState() {
-    camera.position.set(30, 5, 2);
+    camera.position.set(19, 5, 2);
     camera.lookAt(0, 0, 0);
 }
 export function frametoinistialstate(){
@@ -75,18 +75,41 @@ export const mergedMesh = new THREE.Mesh(mergedGeometry, mergedMaterial);
 scene.add(mergedMesh);
 
 // Camera
-const camera = new THREE.PerspectiveCamera(100, window.innerWidth / window.innerHeight, 0.6, 2000);
+const camera = new THREE.PerspectiveCamera(100, window.innerWidth / window.innerHeight, 0.6, 100);
+const desiredWidth = 2500; // Set the width you desire
+const desiredHeight = 500; // Set the height you desire
+
+
 // Renderer
-const renderer = new THREE.WebGLRenderer({antialias: true});
+const renderer = new THREE.WebGLRenderer({antialias: true})
 renderer.setClearColor("#233143"); // Set background colour
-renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.setSize(desiredWidth, desiredHeight);
 document.body.appendChild(renderer.domElement); // Add renderer to HTML as a canvas element
 // Make Canvas Responsive
 window.addEventListener('resize', () => {
-    renderer.setSize(window.innerWidth, window.innerHeight); // Update size
-    camera.aspect = window.innerWidth / window.innerHeight; // Update aspect ratio
-    camera.updateProjectionMatrix(); // Apply changes
-})
+    // Get the current window size
+    const newWidth = window.innerWidth;
+    const newHeight = window.innerHeight;
+
+    // Calculate the aspect ratio based on desired width and height
+    const aspectRatio = desiredWidth / desiredHeight;
+
+    // Calculate the new size while maintaining the aspect ratio
+    let finalWidth, finalHeight;
+    if (newWidth / newHeight > aspectRatio) {
+        finalWidth = newHeight * aspectRatio;
+        finalHeight = newHeight;
+    } else {
+        finalWidth = newWidth;
+        finalHeight = newWidth / aspectRatio;
+    }
+
+    // Update the renderer size and camera aspect ratio
+    renderer.setSize(finalWidth, finalHeight);
+    camera.aspect = aspectRatio;
+    camera.updateProjectionMatrix();
+});
+
 
 
 // Add ambient light
@@ -97,7 +120,7 @@ scene.add(ambientLight);
 // Rendering
 const rendering = function() {
     requestAnimationFrame(rendering);
-    renderer.setClearColor("#000000"); // Black background
+    renderer.setClearColor("#000000"); // Black background;
     renderer.render(scene, camera);
 }
 rendering();

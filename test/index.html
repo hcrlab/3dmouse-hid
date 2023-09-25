@@ -4,22 +4,38 @@
     <meta charset="UTF-8">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
+    <!-- <h1 style="color: rgb(240, 72, 6); text-align: center;">SpaceMouse Controller</h1> -->
+    <style>
+    .black-textbox {
+        display: block;
+        margin: 20px auto;  /* Centers the textbox */
+        background-color: black;
+        color: rgb(102, 5, 5);  /* Text color */
+        font-size: 28px;  /* Increase font size as per requirement */
+        border: none;
+        padding: 10px;
+        width: 300px;  /* Width of the textbox */
+        }
+
+    .black-textbox:focus {
+        outline: none;
+        border: 2px solid red;  /* Focus border color */
+    }
+
+    .black-textbox::placeholder { /* Placeholder style */
+        color: rgba(255, 12, 12, 0.6); /* Light red for placeholder text */
+    }
+
+    </style>
     <!-- <script src="https://cdnjs.cloudflare.com/ajax/libs/roslibjs/0.20.0/roslib.min.js"></script> -->
     <script src="./roslibjs/build/roslib.js"></script>
     <!-- <script type="text/javascript" src="http://static.robotwebtools.org/roslibjs/current/roslib.min.js"></script> -->
     <script type="module" src="main_robot.js"></script>
     <script type="module" src="../dist/space-driver.js"></script>
-    <style>
-        body {
-            margin: 0px;
-            height: 100vh;
-        }
-        canvas {
-            display: block;
-        }
-    </style>
 </head>
 <body>
+    <input type="text" class="black-textbox" placeholder="Space Mouse Controller">
+    <body style="background-color: rgb(154, 144, 144);">
     <p id="errorMessage">WebHID is not available. Are you using Chrome or Edge? Are you running from <tt>localhost</tt> or HTTPS?</p>
     <button id="hidButton" style="display: none;">Request HID Device</button>
     <button id="downloadButton">DownloadCSV</button>
@@ -35,6 +51,11 @@
         <p>Roll (Rx): <span id="rotateX">0</span></p>
         <p>Pitch (Ry): <span id="rotateY">0</span></p>
         <p>Yaw (Rz): <span id="rotateZ">0</span></p>
+       
+        <button id="Rotation">Rotate</button>
+    
+    
+        <button id="Translation">Translate</button>
     </div>
 </body>
 <script type="module">
@@ -106,6 +127,7 @@
 
         // console.log("TXX "+Scene.mergedMesh.position.x + " TYY " +Scene.mergedMesh.position.y +" TZZ " +Scene.mergedMesh.position.z ); // To log all positions at once
         // console.log("RXX "+Scene.mergedMesh.rotation.x + " RYY " +Scene.mergedMesh.rotation.y +" RZZ " +Scene.mergedMesh.rotation.z )
+
         }
 
     function arrayToCSV(data) {
@@ -136,5 +158,22 @@
     }
 
 </script>
+<!-- <img id="cameraFeed" alt="Camera Feed" width="640" height="480"> -->
+
+
+<img id="displayedImage" alt="Processed Image" />
+<img id="displayedImage" alt="Processed Image" />
+
+
+
+
+
+
+
+
+
+
+
+
 </html>
 
