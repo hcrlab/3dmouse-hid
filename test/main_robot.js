@@ -112,30 +112,56 @@ export function gripper(value){
     }
     
 // ROSLIB image topic subscription
-const imageTopic = new ROSLIB.Topic({
-    ros: ros,
-    name: '/camera_sensor/image_raw',
-    messageType: 'sensor_msgs/msg/Image'
-});
+// const imageTopic = new ROSLIB.Topic({
+//     ros: ros,
+//     name: '/camera_sensor/image_raw',
+//     messageType: 'sensor_msgs/msg/Image'
+// });
 
-// Subscribe to the topic
-imageTopic.subscribe(function(message) {
-    // Process the message with your function
-    const base64Jpeg = rgb8ImageToBase64Jpeg(message);
+// // Subscribe to the topic
+// imageTopic.subscribe(function(message) {
+//     // Process the message with your function
+//     const base64Jpeg = rgb8ImageToBase64Jpeg(message);
     
 
-    if (base64Jpeg) {
-        // Display the image on your web interface
-        // Assuming you have an img tag with id="displayedImage"
-        const imageElement = document.getElementById("displayedImage");
-        imageElement.width =800;  // Desired width in pixels
-        imageElement.height = 500; // Desired height in pixels
-        console.log(base64Jpeg.substring(0, 100)); // log the first 100 characters
+//     if (base64Jpeg) {
+//         // Display the image on your web interface
+//         // Assuming you have an img tag with id="displayedImage"
+//         const imageElement = document.getElementById("displayedImage");
+//         imageElement.width =800;  // Desired width in pixels
+//         imageElement.height = 500; // Desired height in pixels
+//         console.log(base64Jpeg.substring(0, 100)); // log the first 100 characters
 
 
-        imageElement.src = "data:image/jpeg;base64," + base64Jpeg;
-    }
-});
+//         imageElement.src = "data:image/jpeg;base64," + base64Jpeg;
+//     }
+// });
+// Usage
+subscribeToCameraTopic(ros, '/camera/image_raw', 'displayedImageCamera0');
+subscribeToCameraTopic(ros, '/camera1/image_raw', 'displayedImageCamera1');
+subscribeToCameraTopic(ros, '/camera2/image_raw', 'displayedImageCamera2');
+
+
+function subscribeToCameraTopic(ros, topicName, imageElementId) {
+    const imageTopic = new ROSLIB.Topic({
+        ros: ros,
+        name: topicName,
+        messageType: 'sensor_msgs/msg/Image'
+    });
+
+    imageTopic.subscribe(function(message) {
+        const base64Jpeg = rgb8ImageToBase64Jpeg(message);
+        
+        if (base64Jpeg) {
+            const imageElement = document.getElementById(imageElementId);
+            imageElement.width = 800;
+            imageElement.height = 500;
+            console.log(base64Jpeg.substring(0, 100));
+            imageElement.src = "data:image/jpeg;base64," + base64Jpeg;
+        }
+    });
+}
+
     
 function rgb8ImageToBase64Jpeg(msg) {
     try {
