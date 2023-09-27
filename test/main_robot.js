@@ -23,6 +23,21 @@ ros.on('close', function() {
     document.getElementById("status").innerHTML = "Closed";
 });
 
+let mode = null; // It can be 'rotate' or 'translate'
+
+document.getElementById('rotateButton').addEventListener('click', () => {
+    mode = 'rotate';
+    console.log("rotate")
+    // Call function or set other necessary states here if needed
+});
+
+document.getElementById('translateButton').addEventListener('click', () => {
+    console.log("transalate")
+    mode = 'translate';
+    // Call function or set other necessary states here if needed
+});
+
+
 // Assuming 'robotTopic' is your ROS 2 topic for publishing
 var move_robotTopic = new ROSLIB.Topic({
     ros: ros,
@@ -30,8 +45,34 @@ var move_robotTopic = new ROSLIB.Topic({
     messageType: 'geometry_msgs/msg/TwistStamped' // Specify the correct message type
 });
 
-export function move_robot(report) {
+export function move_robott(report) {
     // Assuming you have a ROS node initialized as 'rosNode'
+    let linearValues_t ={
+        x:report.Ty_f,
+        y:report.Tx_f,
+        z:report.Tz_f
+    };
+
+    let angularValues_t={
+        x: -report.Ry_f,
+        y: report.Tx_f,
+        z: report.Tz_f
+
+    };
+    if (mode === 'rotate') {
+        linearValues_t = {
+            x: 0,
+            y: 0,
+            z: 0
+        };
+    } else if (mode === 'translate') {
+        angularValues_t = {
+            x: 0,
+            y: 0,
+            z: 0
+        };
+    }
+
 
     // Create a Twist message
     var twist = new ROSLIB.Message({
@@ -41,9 +82,10 @@ export function move_robot(report) {
                 y: report.Tx_f,
                 z: report.Tz_f
             },
+            
             angular: {
-                x: report.Ry_f,
-                y: -report.Rx_f,
+                x: -report.Ry_f,
+                y: report.Rx_f,
                 z: report.Rz_f
             }
         }
@@ -67,6 +109,123 @@ export function move_robot(report) {
 
     console.log("Published Twist message to robotTopic.");
 }
+export function move_robotf(report) {
+    // Assuming you have a ROS node initialized as 'rosNode'
+    let linearValues = {
+        x: report.Ty_f,
+        y: -report.Tx_f,
+        z: report.Tz_f
+    };
+
+    let angularValues = {
+        x: report.Ry_f,
+        y: -report.Rx_f,
+        z: report.Rz_f
+    };
+
+    if (mode === 'rotate') {
+        linearValues = {
+            x: 0,
+            y: 0,
+            z: 0
+        };
+    } else if (mode === 'translate') {
+        angularValues = {
+            x: 0,
+            y: 0,
+            z: 0
+        };
+    }
+   
+    // Create a Twist message
+    var twist = new ROSLIB.Message({
+        twist: {
+            linear: linearValues,
+            angular: angularValues
+        }
+    });
+    var header = new ROSLIB.Message({
+        stamp: {
+            sec: Math.floor(Date.now() / 1000), // Current time in seconds
+            nanosec: (Date.now() % 1000) * 1e6 // Current time in nanoseconds
+        },
+        frame_id: 'wrist_3_link' // Replace with your desired frame_id
+    });
+
+    // Assign the header to the TwistStamped message
+    twist.header = header;
+
+    
+
+    // Publish the Twist message to the topic
+    move_robotTopic.publish(twist);
+    
+
+    console.log("Published Twist message to robotTopic.");
+}
+export function move_robots(report) {
+    // Assuming you have a ROS node initialized as 'rosNode'
+    let linearValues_s={
+        x: -report.Tx_f,
+        y: -report.Ty_f,
+        z: report.Tz_f
+
+    };
+    let angularValues_s={
+        x: -report.Rx_f,
+        y: -report.Ry_f,
+        z: report.Rz_f
+
+    }
+    if (mode === 'rotate') {
+        linearValues_s = {
+            x: 0,
+            y: 0,
+            z: 0
+        };
+    } else if (mode === 'translate') {
+        angularValues_s = {
+            x: 0,
+            y: 0,
+            z: 0
+        };
+    }
+
+    // Create a Twist message
+    var twist = new ROSLIB.Message({
+        twist: {
+            linear: {
+                x: -report.Tx_f,
+                y: -report.Ty_f,
+                z: report.Tz_f
+            },
+            angular: {
+                x: -report.Rx_f,
+                y: -report.Ry_f,
+                z: report.Rz_f
+            }
+        }
+    });
+    var header = new ROSLIB.Message({
+        stamp: {
+            sec: Math.floor(Date.now() / 1000), // Current time in seconds
+            nanosec: (Date.now() % 1000) * 1e6 // Current time in nanoseconds
+        },
+        frame_id: 'wrist_3_link' // Replace with your desired frame_id
+    });
+
+    // Assign the header to the TwistStamped message
+    twist.header = header;
+
+    
+
+    // Publish the Twist message to the topic
+    move_robotTopic.publish(twist);
+    
+
+    console.log("Published Twist message to robotTopic.");
+}
+
 const openTopic=new ROSLIB.Topic({
   ros:ros,
   name:'/open_grip',
@@ -111,32 +270,6 @@ export function gripper(value){
 
     }
     
-// ROSLIB image topic subscription
-// const imageTopic = new ROSLIB.Topic({
-//     ros: ros,
-//     name: '/camera_sensor/image_raw',
-//     messageType: 'sensor_msgs/msg/Image'
-// });
-
-// // Subscribe to the topic
-// imageTopic.subscribe(function(message) {
-//     // Process the message with your function
-//     const base64Jpeg = rgb8ImageToBase64Jpeg(message);
-    
-
-//     if (base64Jpeg) {
-//         // Display the image on your web interface
-//         // Assuming you have an img tag with id="displayedImage"
-//         const imageElement = document.getElementById("displayedImage");
-//         imageElement.width =800;  // Desired width in pixels
-//         imageElement.height = 500; // Desired height in pixels
-//         console.log(base64Jpeg.substring(0, 100)); // log the first 100 characters
-
-
-//         imageElement.src = "data:image/jpeg;base64," + base64Jpeg;
-//     }
-// });
-// Usage
 subscribeToCameraTopic(ros, '/camera/image_raw', 'displayedImageCamera0');
 subscribeToCameraTopic(ros, '/camera1/image_raw', 'displayedImageCamera1');
 subscribeToCameraTopic(ros, '/camera2/image_raw', 'displayedImageCamera2');
@@ -154,7 +287,7 @@ function subscribeToCameraTopic(ros, topicName, imageElementId) {
         
         if (base64Jpeg) {
             const imageElement = document.getElementById(imageElementId);
-            imageElement.width = 800;
+            imageElement.width = 600;
             imageElement.height = 500;
             console.log(base64Jpeg.substring(0, 100));
             imageElement.src = "data:image/jpeg;base64," + base64Jpeg;

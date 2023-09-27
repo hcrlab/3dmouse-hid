@@ -52,20 +52,25 @@
         <p>Pitch (Ry): <span id="rotateY">0</span></p>
         <p>Yaw (Rz): <span id="rotateZ">0</span></p>
        
-        <button id="Rotation">Rotate</button>
-    
-    
-        <button id="Translation">Translate</button>
+        <button id="rotateButton">Rotate</button>
+        <button id="translateButton">Translate</button>
+        
     </div>
 </body>
 <script type="module">
+    window.movefront=null
+    window.movetop=null
+    window.moveside=null
+    window.actionType=null
+
     import { ThreeDMouse } from '../dist/space-driver.js';
     import * as THREE from "https://unpkg.com/three@0.126.1/build/three.module.js"
     import { BufferGeometryUtils } from "https://unpkg.com/three@0.126.1/examples/jsm/utils/BufferGeometryUtils.js";
     import * as Scene from '../dist/scene.js';
     import DataManager from '../dist/dataManager.js';
     import * as Robot from "./main_robot.js";
-    
+
+
 
     window.addEventListener('DOMContentLoaded', (event) => {
         if (navigator.hid) {
@@ -83,16 +88,31 @@
                 updateMarker(inputData);
 
                 // Move the robot based on the input data
-                Robot.move_robot(inputData);
+                // Robot.move_robotf(inputData);
                 
+                if(window.actionType==='action0'){
+                    console.log("123")
+                    window.movefront=Robot.move_robotf(inputData)
+                    
+                }
+                else if (window.actionType==='action1'){
+                    console.log("aaa")
+                    window.movetop=Robot.move_robott(inputData)
+                }
+                else if (window.actionType==='action2'){
+                    console.log("aaa")
+                    window.moveside=Robot.move_robots(inputData)
+                }
+ 
 
             });
+            
 
             device.configure_grip(gripdata=>{
-                console.log("1234");
+                // console.log("1234");
 
                 Robot.gripper(gripdata);
-                console.log(gripdata)
+                // console.log(gripdata)
 
             });
 
@@ -140,7 +160,7 @@
         const url = URL.createObjectURL(blob);
         link.setAttribute("href", url);
         link.setAttribute("download", fileName);
-        link.style.visibility = 'hidden';
+        link.style.visibility = 'hidden'; 
         
         document.body.appendChild(link);
         link.click();
@@ -161,21 +181,89 @@
 <!-- <img id="cameraFeed" alt="Camera Feed" width="640" height="480"> -->
 
 
-<img id="displayedImageCamera0" alt="Camera 0 Feed">
-<img id="displayedImageCamera1" alt="Camera 1 Feed">
-<img id="displayedImageCamera2" alt="Camera 2 Feed">
+<div style="display: flex; justify-content: space-between; align-items: center;">
+    <div style="display: flex; flex-direction: column; align-items: center;">
+        <img id="displayedImageCamera0" alt="Camera 0 Feed" style="width: 700px; height: 400px; display: block; border: 3px solid black;">
+        <button onclick="activateButton(this, 'action0')">Front View</button>
+    </div>
+    
+    <div style="display: flex; flex-direction: column; align-items: center;">
+        <img id="displayedImageCamera1" alt="Camera 1 Feed" style="width: 700px; height: 400px; display: block; border: 3px solid black;">
+        <button onclick="activateButton(this, 'action1')">Top View</button>
+    </div>
+    
+    <div style="display: flex; flex-direction: column; align-items: center;">
+        <img id="displayedImageCamera2" alt="Camera 2 Feed" style="width: 700px; height: 400px; display: block; border: 3px solid black;">
+        <button onclick="activateButton(this, 'action2')">Side View</button>
+    </div>
+</div>
 
+<script type ="module">
+    import * as Robot from "./main_robot.js";
+    let activeButton = null; 
 
+    function activateButton(clickedButton, actionType) {
+        const enlargedWidth = '800px';
+        const enlargedHeight = '450px';
+        const reducedWidth = '600px';
+        const reducedHeight = '400px';
 
+        // Reset all images to their reduced size
+        let images = document.querySelectorAll('img');
+        for (let img of images) {
+            img.style.width = reducedWidth;
+            img.style.height = reducedHeight;
+            img.style.margin = '0';  // Reset the margins
+        }
 
+        // Reset the previous active button (if any)
+        if (activeButton) {
+            activeButton.style.backgroundColor = '';
+        }
+       
+        // Execute the functionality based on the action type
+        switch (actionType) {
+            case 'action0':
+                window.actionType='action0'
+                window.globalInputData =window.movefront
+                adjustImageSize('displayedImageCamera0', enlargedWidth, enlargedHeight);
+                break;
+            case 'action1':
+                window.actionType='action1'
+                window.globalInputData =window.movetop
+                adjustImageSize('displayedImageCamera1', enlargedWidth, enlargedHeight);
+                break;
+            case 'action2':
+                window.actionType='action2'
+                window.globalInputData =window.moveside
+                adjustImageSize('displayedImageCamera2', enlargedWidth, enlargedHeight);
+                break;
+            default:
+                alert('Unknown action!');
+        }
 
+        // Activate the clicked button
+        clickedButton.style.backgroundColor = 'red';
 
+        // Update the active button reference
+        activeButton = clickedButton;
 
+    }
+    window.activateButton = activateButton;
 
+    function adjustImageSize(imageId, width, height) {
+        let img = document.getElementById(imageId);
+        let widthDifference = parseInt(width) - img.clientWidth;
+        let heightDifference = parseInt(height) - img.clientHeight;
+        
+        img.style.width = width;
+        img.style.height = height;
+        img.style.margin = `-${heightDifference / 2}px -${widthDifference / 2}px`;  // Adjust margins
+    }
+</script>
 
+</script>
 
-
-
-
+</script>
 </html>
 
