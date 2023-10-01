@@ -71,8 +71,6 @@
     import DataManager from '../dist/dataManager.js';
     import * as Robot from "./main_robot.js";
 
-
-
     window.addEventListener('DOMContentLoaded', (event) => {
         if (navigator.hid) {
             document.getElementById("errorMessage").innerText = "";
@@ -89,20 +87,24 @@
                 updateMarker(inputData);
 
                 // Move the robot based on the input data
-                // Robot.move_robotf(inputData);
+                
                 
                 if(window.actionType==='action0'){
-                    console.log("123")
+                    // console.log("123")
                     window.movefront=Robot.move_robotf(inputData)
                     
                 }
                 else if (window.actionType==='action1'){
-                    console.log("aaa")
+                    // console.log("aaa")
                     window.movetop=Robot.move_robott(inputData)
                 }
                 else if (window.actionType==='action2'){
-                    console.log("aaa")
+                    // console.log("aaa")
                     window.moveside=Robot.move_robots(inputData)
+                }
+                //by default the code will run in this case if user did'nt select any frame (Top frame)
+                else{
+                    Robot.move_robott(inputData);
                 }
  
 
@@ -263,7 +265,15 @@
     }
 </script>
 
-</script>
+
+
+
+
+
+<input type="range" min="0" max="100" value="50" id="myRange">
+<p>Value: <span id="demo"></span></p>
+<script type ="module">
+    import * as Robot from "./main_robot.js";
 
 </script>
 </html>

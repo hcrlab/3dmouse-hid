@@ -43,6 +43,17 @@ document.getElementById('Both(T+R)').addEventListener('click', () => {
     // Call function or set other necessary states here if needed
 });
 
+var slider = document.getElementById("myRange");
+var output = document.getElementById("demo");
+output.innerHTML = slider.value; // Display the default slider value
+
+// Update the current slider value (each time you drag the slider handle)
+slider.oninput = function() {
+  output.innerHTML = this.value;
+  console.log(this.value)
+}
+
+
 
 // Assuming 'robotTopic' is your ROS 2 topic for publishing
 var move_robotTopic = new ROSLIB.Topic({
@@ -161,6 +172,19 @@ export function move_robott(report) {
 
         };
     }
+    
+    //If no mode is selected then these are the default values
+    linearValues_t ={
+        x:-report.Ty_f,
+        y:report.Tx_f,
+        z:report.Tz_f
+    };
+    angularValues_t={
+        x: -report.Ry_f,
+        y: report.Tx_f,
+        z: report.Tz_f
+
+    };
 
     // Create a Twist message
     var twist = new ROSLIB.Message({
@@ -237,6 +261,19 @@ export function move_robotf(report) {
 
         }
     }
+
+    //If no mode is selected then these are the default values
+    linearValuesf={
+        x: report.Ty_f,
+        y: -report.Tx_f,
+        z: report.Tz_f
+    };
+    angularValuesf={
+        x: -report.Ry_f,
+        y: report.Tx_f,
+        z: report.Tz_f
+
+    }
    
     // Create a Twist message
     var twist = new ROSLIB.Message({
@@ -308,6 +345,19 @@ export function move_robots(report) {
         };
         
     }
+
+    //If no mode is selected then these are the default values
+    linearValues_s={
+        x: -report.Tx_f,
+        y: -report.Ty_f,
+        z: report.Tz_f
+        };
+
+        angularValues_s={
+        x: -report.Rx_f,
+        y: -report.Ry_f,
+        z: report.Rz_f
+        };
 
     // Create a Twist message
     var twist = new ROSLIB.Message({

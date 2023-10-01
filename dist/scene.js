@@ -9,6 +9,8 @@ export function setCameraToInitialState() {
     camera.position.set(19, 5, 2);
     camera.lookAt(0, 0, 0);
 }
+
+
 export function frametoinistialstate(){
     mergedMesh.position.x=0;
     mergedMesh.position.y=0;
@@ -29,6 +31,15 @@ const geometryX = new THREE.TubeBufferGeometry(curveX, 64, 0.1, 8, false);
 const materialX = new THREE.MeshLambertMaterial({color: 0xff0000});
 const meshX = new THREE.Mesh(geometryX, materialX);
 
+//Red X-axis (Static)
+const curve_X = new THREE.LineCurve3(
+    new THREE.Vector3(0, 0, 0),
+    new THREE.Vector3(10, 0, 0)
+);
+const geometry_X = new THREE.TubeBufferGeometry(curve_X, 64, 0.1, 8, false);
+const material_X = new THREE.MeshLambertMaterial({color: 0xff0000});
+const mesh_X = new THREE.Mesh(geometry_X, material_X);
+
 
 // Green Y-axis
 const curveY = new THREE.LineCurve3(
@@ -39,8 +50,16 @@ const geometryY = new THREE.TubeBufferGeometry(curveY, 64, 0.1, 8, false);
 const materialY = new THREE.MeshLambertMaterial({color: 0x00ff00});
 const meshY = new THREE.Mesh(geometryY, materialY);
 
+// Green Y-axis  (static)
+const curve_Y = new THREE.LineCurve3(
+    new THREE.Vector3(0, 0, 0),
+    new THREE.Vector3(0, 10, 0)
+);
+const geometry_Y = new THREE.TubeBufferGeometry(curve_Y, 64, 0.1, 8, false);
+const material_Y = new THREE.MeshLambertMaterial({color: 0x00ff00});
+const mesh_Y = new THREE.Mesh(geometry_Y, material_Y);
 
-// // Blue Z-axis
+ // Blue Z-axis
 const curveZ = new THREE.LineCurve3(
     new THREE.Vector3(0, 0, 0),
     new THREE.Vector3(0, 0, -10)
@@ -48,6 +67,15 @@ const curveZ = new THREE.LineCurve3(
 const geometryZ = new THREE.TubeBufferGeometry(curveZ, 64, 0.1, 8, false);
 const materialZ = new THREE.MeshLambertMaterial({color: 0x0000ff});
 const meshZ = new THREE.Mesh(geometryZ, materialZ);
+
+ // Blue Z-axis
+ const curve_Z = new THREE.LineCurve3(
+    new THREE.Vector3(0, 0, 0),
+    new THREE.Vector3(0, 0, -10)
+);
+const geometry_Z = new THREE.TubeBufferGeometry(curve_Z, 64, 0.1, 8, false);
+const material_Z = new THREE.MeshLambertMaterial({color: 0x0000ff});
+const mesh_Z = new THREE.Mesh(geometry_Z, material_Z);
 
 
 
@@ -73,6 +101,20 @@ const mergedMaterial = new THREE.MeshBasicMaterial({ vertexColors: true });
 
 export const mergedMesh = new THREE.Mesh(mergedGeometry, mergedMaterial);
 scene.add(mergedMesh);
+
+
+// Merge the static geometries
+// const staticMergedGeometry = BufferGeometryUtils.mergeBufferGeometries([geometry_X, geometry_Y, geometry_Z]);
+// const staticMergedMesh = new THREE.Mesh(staticMergedGeometry, mergedMaterial);
+// scene.add(staticMergedMesh);
+
+scene.add(mesh_X);
+scene.add(mesh_Y);
+scene.add(mesh_Z);
+
+
+
+
 
 // Camera
 const camera = new THREE.PerspectiveCamera(100, window.innerWidth / window.innerHeight, 0.6, 100);
