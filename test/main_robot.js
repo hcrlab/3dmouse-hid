@@ -20,41 +20,22 @@ export class Robot {
       messageType: 'std_msgs/Empty'
     });
 
-    this.mode = null;
   }
 
-  setMode(mode) {
-    this.mode = mode;
-  }
-
-  move(report) {
+  move([linear, angular]) {
     let linearValues = {
-      x: -report.Ty_f,
-      y: report.Tx_f,
-      z: report.Tz_f
+      x: linear[0],
+      y: linear[1],
+      z: linear[2]
     };
 
     let angularValues = {
-      x: -report.Ry_f,
-      y: report.Tx_f,
-      z: report.Tz_f
+      x: angular[0],
+      y: angular[1],
+      z: angular[2]
     };
 
-    if (this.mode === 'rotate') {
-      linearValues = {
-        x: 0,
-        y: 0,
-        z: 0
-      };
-    } else if (this.mode === 'translate') {
-      angularValues = {
-        x: 0,
-        y: 0,
-        z: 0
-      };
-    }
-
-    const twist = new ROSLIB.Message({
+    const twistMsg = new ROSLIB.Message({
       twist: {
         linear: linearValues,
         angular: angularValues
@@ -69,8 +50,8 @@ export class Robot {
       frame_id: 'tool0'
     });
 
-    twist.header = header;
-    this.twistTopic.publish(twist);
+    twistMsg.header = header;
+    this.twistTopic.publish(twistMsg);
     console.log('Published Twist message to robotTopic.');
   }
 

@@ -4,6 +4,16 @@
     <meta charset="UTF-8">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
+    <!-- See threejs usage documentation: https://threejs.org/docs/#manual/en/introduction/Installation -->
+    <script type="importmap">
+        {
+          "imports": {
+            "three": "https://unpkg.com/three@0.156.1/build/three.module.js",
+            "three/addons/": "https://unpkg.com/three@0.156.1/examples/jsm/",
+            "uplot": "https://cdn.jsdelivr.net/npm/uplot@1.6.25/+esm"
+          }
+        }
+    </script>
     <script type="module" src="https://cdn.jsdelivr.net/npm/roslib@1/build/roslib.min.js"></script>
     <style>
         body {
@@ -37,7 +47,7 @@
             <canvas id="view0" alt="Camera 0 Feed" ></canvas>
         </div>
 
-        <div">
+        <div>
             <canvas id="view1" alt="Camera 1 Feed" >
         </div>
 
@@ -49,16 +59,11 @@
     
 </body>
 <script type="module">
-    window.movefront=null
-    window.movetop=null
-    window.moveside=null
-    window.actionType=null
-    import { ThreeDMouse } from '../dist/ThreeDMouse.js';
-    import { BufferGeometryUtils } from "https://unpkg.com/three@0.126.1/examples/jsm/utils/BufferGeometryUtils.js";
+    import { ThreeDMouse, SmoothingDeadbandFilter } from '../dist/ThreeDMouse.js';
     import {TwistViz} from '../dist/TwistViz.js';
     import DataManager from '../dist/dataManager.js';
     import { Robot, subscribeToCameraTopic } from "./main_robot.js";
-    import uPlot from 'https://cdn.jsdelivr.net/npm/uplot@1.6.25/+esm'
+    import uPlot from 'uplot'
 
 
     let twistViz = null;
@@ -76,15 +81,17 @@
         const connectButton = document.getElementById('hidButton')
         connectButton.addEventListener('click', () => 
         ThreeDMouse.requestDevice().then(device => {
+            if (!device) {
+                return
+            }
+            device.configureFilter(new SmoothingDeadbandFilter({smoothing: 0.5, deadband: 0.1}));
             twistViz = new TwistViz(document.getElementById("inputViz"));
             twistViz.begin()
             window.addEventListener("3dmouseinput", event => {
-                let values = event.detail.controlValue
+                let values = event.detail.filteredInput
                 // Process the input data and update the marker
-                twistViz.setTwist([values.Tx_f, values.Ty_f, values.Tz_f, values.Rx_f, values.Ry_f, values.Rz_f]);
-
-                robot.move(event.detail.controlValue);
-
+                twistViz.setTwist(values);
+                robot.move(values);
 
             });
 
@@ -215,13 +222,14 @@
         data.forEach((d, i) => {
             d.shift()
         })
+        const [linear, angular] = event.detail.filteredInput
         data[0].push(i)
-        data[1].push(event.detail.controlValue.Tx_f)
-        data[2].push(event.detail.controlValue.Ty_f)
-        data[3].push(event.detail.controlValue.Tz_f)
-        data[4].push(event.detail.controlValue.Rx_f)
-        data[5].push(event.detail.controlValue.Ry_f)
-        data[6].push(event.detail.controlValue.Rz_f)
+        data[1].push(linear[0])
+        data[2].push(linear[1])
+        data[3].push(linear[2])
+        data[4].push(angular[0])
+        data[5].push(angular[1])
+        data[6].push(angular[2])
         plot.setData(data)
         i+= 1
     })
