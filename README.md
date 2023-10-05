@@ -36,7 +36,7 @@ Then try `test/test_ros.html`
     rosdep install --from-paths .
     sudo apt install ros-humble-ur-description ros-humble-controller-manager ros-humble-ur-moveit-config sudo apt install ros-humble-gazebo-ros-pkgs ros-humble-webbridge-suite ros-humble-ros2-control ros-humble-position-controllers
 
-    ros2 run rosbridge_server rosbridge_websocket.py
+    ros2 launch ur_simulation_gazebo ur_sim_moveit.launch.py ur_type:=ur5e
 
     ros2 control load_controller --set-state configured forward_position_controller
     ros2 control switch_controllers --deactivate joint_trajectory_controller --activate forward_position_controller
@@ -48,6 +48,7 @@ Then try `test/test_ros.html`
     # Load cameras into Gazebo
     ./spawner.py camera_rig.urdf
 
+    ros2 run rosbridge_server rosbridge_websocket.py
 
 
 ## Usage
