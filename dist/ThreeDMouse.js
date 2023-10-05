@@ -1,27 +1,93 @@
+import { HID_FILTERS, IDS_TO_NAME, DEVICE_SPECS } from "./device_specs.js";
+
+
+function makeCubicDeadbandFilter(weight, deadband) {
+    const d3 = Math.pow(deadband, 3)
+    const iw = 1 - weight
+    const scaleFactor = weight * d3 + iw * deadband
+    return (x) => {
+        if (Math.abs(x) < deadband) {
+            return 0;
+        }
+       return ((weight * Math.pow(x, 3) + iw * x) - ((Math.abs(x) / x) * scaleFactor)) / (1 - scaleFactor)
+    }
+}
+
+export class SmoothingDeadbandFilter {
+    constructor({
+        deadband: deadband=0.1,
+        smoothing: smoothingWeight=0.5, 
+        softmaxWeight: softmaxWeight=0.1}) {
+            this.smoothing = smoothingWeight
+            this._deadband = deadband
+            this._remappingWeight = remappingWeight
+            this._softmaxWeight = softmaxWeight
+        this._deadbandFilter = makeCubicDeadbandFilter(remappingWeight, deadband)
+        this.rotationMultiplier = 1.0
+        this.translationMultiplier = 1.0
+        this._previousInput = [[0, 0, 0], [0, 0, 0]]
+
+    }
+
+    set deadbandType(value) {
+
+    }
+
+    set deadband(value) {
+        this._deadband = value
+        this._deadbandFilter = makeCubicDeadbandFilter(this._remappingWeight, this._deadband)
+    }
+
+    set filterWeight(value) {
+        this._remappingWeight = value
+        this._deadbandFilter = makeCubicDeadbandFilter(this._remappingWeight, this._deadband)
+    }
+
+    process(transIn, rotIn) {
+        let transProcessed = transIn.map(this._deadbandFilter)
+        let rotProcessed = rotIn.map(this._deadbandFilter)
+        const transPrev = this._previousInput[0]
+        const rotPrev = this._previousInput[1]
+        // L1 norm
+        let magnitude = transProcessed.reduce((a, b) => a + Math.abs(b), 0)
+        magnitude = Math.min(magnitude, 1.0)
+        if (magnitude === 0.0) {
+            transProcessed.map((x, i) => transPrev * this.smoothing)
+        } else {
+            const transExp = transProcessed.slice().map(x => Math.exp(Math.abs(x) / this._softmaxWeight))
+            const transExpMagnitude = transExp.reduce((a, b) => a + b, 0)
+            let softmax = transExp.map(x => x / transExpMagnitude)
+            transProcessed = transProcessed.map((x, i) => x * softmax[i])
+            const transProcessedMag = transProcessed.reduce((a, b) => a + Math.abs(b), 0)
+            transProcessed = transProcessed.map((x, i) => x * (magnitude / transProcessedMag))
+        }
+        this._previousInput = [transProcessed, rotProcessed]
+        return [transProcessed, rotProcessed]
+    }
+
+}
+
 export class ThreeDMouse {
-    constructor(device) {
+    constructor(device, dataSpecs) {
         this.device = device;
+        this.dataSpecs = dataSpecs
+        this.filter = null
         this.device.addEventListener("inputreport", this.handleInputReport.bind(this));
         navigator.hid.addEventListener("connect", this.handleConnectedDevice);
         navigator.hid.addEventListener("disconnect", this.handleDisconnectedDevice);
-        this.freshResponse = false;
-        this.response = {
-            Tx: null,
-            Ty: null,
-            Tz: null,
-            Rx: null,
-            Ry: null,
-            Rz: null
-        };
-        this.response_filter = {
-            Tx_f: null,
-            Ty_f: null,
-            Tz_f: null,
-            Rx_f: null,
-            Ry_f: null,
-            Rz_f: null
-        };
-        this.buttonValue=null
+        this._workingState =  {
+            "t": -1,
+            "x": 0.,
+            "y": 0.,
+            "z": 0.,
+            "r": 0.,
+            "p": 0.,
+            "ya": 0.,
+            "buttonStates": {},
+            "buttonsValue": 0,
+            "buttonsChanged": false,
+            "controlChangeCount": 0,
+        }
     }
 
     handleConnectedDevice(e) {
@@ -30,178 +96,77 @@ export class ThreeDMouse {
     handleDisconnectedDevice(e) {
         console.log(`Device ${e.device.productName} is disconnected.`);
     }
+    configureFilter(filter) {
+        this.filter = filter
+    }
     static async requestDevice() {
-        try {
-            const devices = await navigator.hid.requestDevice({ filters: [{ vendorId: 0x046d }] });
+        const devices = await navigator.hid.requestDevice({ filters: HID_FILTERS });
 
-            if (devices.length === 0) {
-                console.warn("No devices found.");
-                return;
-            }
-
-            this.device = devices[0];
-
-            if (!this.device.opened) {
-                await this.device.open();
-                console.log("Opened device: " + this.device.productName);
-                return new ThreeDMouse(this.device)
-
-            } else {
-                console.log("Device is already open:", this.device.productName);
-            }
-        } catch (error) {
-            console.error("Error:", error);
+        if (devices.length === 0) {
+            console.warn("No devices found.");
+            return;
         }
+
+        this.device = devices[0];
+
+        if (!this.device.opened) {
+            await this.device.open();
+            console.log("Opened device: " + this.device.productName);
+            const driverName = IDS_TO_NAME[[this.device.vendorId, this.device.productId]];
+            return new ThreeDMouse(this.device, DEVICE_SPECS[driverName])
+
+        } else {
+            console.log("Device is already open:", this.device.productName);
+        }
+      
     }
 
     handleInputReport(e) {
+        let data = e.data
 
-        let response_filter = {
-            Tx_f: null,
-            Ty_f: null,
-            Tz_f: null,
-            Rx_f: null,
-            Ry_f: null,
-            Rz_f: null
-        }
-        switch (e.reportId) {
-            case 1: // Translation event
-
-                // Get translation values from the data
-                this.response.Tx = e.data.getInt16(0, true) / 350;
-                this.response.Ty = e.data.getInt16(2, true) / 350;
-                this.response.Tz = e.data.getInt16(4, true) / 350;
-
-            /**
-             * Declare the values (before filtering, we assign the raw values from the mouse to the 
-             * variables which will eventually have filtered values).
-             */
-
-            response_filter.Tx_f = this.response.Tx;
-            response_filter.Ty_f = this.response.Ty;
-            response_filter.Tz_f = this.response.Tz;
-
-            // Condition 1: Filter values within the range [-0.2, 0.2]
-            response_filter.Tx_f = (-0.2 <= response_filter.Tx_f && response_filter.Tx_f <= 0.2) ? 0.0 : response_filter.Tx_f;
-            response_filter.Ty_f = (-0.2 <= response_filter.Ty_f && response_filter.Ty_f <= 0.2) ? 0.0 : response_filter.Ty_f;
-            response_filter.Tz_f = (-0.2 <= response_filter.Tz_f && response_filter.Tz_f <= 0.2) ? 0.0 : response_filter.Tz_f;
-
-            // Condition 2: Divide values within the range [-0.5, 0.5] by 1.5
-            response_filter.Tx_f = (-0.5 <= response_filter.Tx_f && response_filter.Tx_f <= 0.5) ? response_filter.Tx_f / 1.5 : response_filter.Tx_f;
-            response_filter.Ty_f = (-0.5 <= response_filter.Ty_f && response_filter.Ty_f <= 0.5) ? response_filter.Ty_f / 1.5 : response_filter.Ty_f;
-            response_filter.Tz_f = (-0.5 <= response_filter.Tz_f && response_filter.Tz_f <= 0.5) ? response_filter.Tz_f / 1.5 : response_filter.Tz_f;
-
-            // Condition 3: Apply Softmax function for non-zero values
-            if (response_filter.Tx_f != 0 && response_filter.Ty_f != 0 && response_filter.Tz_f != 0){
-                let { wx, wy, wz } = softmax(response_filter.Tx_f, response_filter.Ty_f, response_filter.Tz_f);
-                response_filter.Tx_f = response_filter.Tx_f * wx;
-                response_filter.Ty_f = response_filter.Ty_f * wy;
-                response_filter.Tz_f = response_filter.Tz_f * wz;
+        for (const [name, {channel: chan, byte: byte, scale: flip}] of Object.entries(this.dataSpecs.mappings)) {
+            if (e.reportId === chan) {
+            this._workingState[name] = flip * data.getInt16(byte, true) / this.dataSpecs.axisScale;
+            if (name === "r" || name === "x") {
+                this._workingState["controlChangeCount"] += 1;
             }
-            
-            this.freshResponse=false;
-            this.response_filter.Tx_f = response_filter.Tx_f;
-            this.response_filter.Ty_f = response_filter.Ty_f;
-            this.response_filter.Tz_f = response_filter.Tz_f;
-            break;
-
-            
-        case 2: // Rotation event
-
-            // Get rotation values from the data
-            this.response.Rx = e.data.getInt16(0, true) / 350;
-            this.response.Ry = e.data.getInt16(2, true) / 350;
-            this.response.Rz = e.data.getInt16(4, true) / 350;
-        
-            // Declare the values for filtering
-            response_filter.Rx_f = this.response.Rx;
-            response_filter.Ry_f = this.response.Ry;
-            response_filter.Rz_f = this.response.Rz;
-        
-            // Condition_1: Filter values within the range [-0.2, 0.2]
-            response_filter.Rx_f = (-0.2 <= response_filter.Rx_f && response_filter.Rx_f <= 0.2) ? 0.0 : response_filter.Rx_f;
-            response_filter.Ry_f = (-0.2 <= response_filter.Ry_f && response_filter.Ry_f <= 0.2) ? 0.0 : response_filter.Ry_f;
-            response_filter.Rz_f = (-0.2 <= response_filter.Rz_f && response_filter.Rz_f <= 0.2) ? 0.0 : response_filter.Rz_f;
-        
-            // Condition_2: Divide values within the range [-0.5, 0.5] by 1.5
-            response_filter.Rx_f = (0.5 >= response_filter.Rx_f && response_filter.Rx_f >= -0.5) ? response_filter.Rx_f / 1.5 : response_filter.Rx_f;
-            response_filter.Ry_f = (0.5 >= response_filter.Ry_f && response_filter.Ry_f >= -0.5) ? response_filter.Ry_f / 1.5 : response_filter.Ry_f;
-            response_filter.Rz_f = (0.5 >= response_filter.Rz_f && response_filter.Rz_f >= -0.5) ? response_filter.Rz_f / 1.5 : response_filter.Rz_f;
-        
-            // Condition 3: Apply Softmax function for non-zero values
-            if (response_filter.Rx_f != 0 && response_filter.Ry_f != 0 && response_filter.Rz_f != 0) {
-                // Apply Softmax function and update filtered values
-                let { WX, WY, WZ } = softmax_r(response_filter.Rx_f, response_filter.Ry_f, response_filter.Rz_f);
-                response_filter.Rx_f = response_filter.Rx_f * WX;
-                response_filter.Ry_f = response_filter.Ry_f * WY;
-                response_filter.Rz_f = response_filter.Rz_f * WZ;
             }
-        
-            this.freshResponse = true;
-
-            this.response_filter.Rx_f = response_filter.Rx_f;
-            this.response_filter.Ry_f = response_filter.Ry_f; 
-            this.response_filter.Rz_f = response_filter.Rz_f;
-            break;
-
-        case 3:  // key press/release event
-            // Handle key presses based on your requirements
-            // No changes needed here for Tx, Ty, Tz, Rx, Ry, Rz
-            const value = e.data.getUint8(0);
-            
-            /*
-                For my SpaceNavigator, a device having two (2) keys only:
-                value is a 2-bit bitmask, allowing 4 key-states:
-                value = 0: no keys pressed
-                value = 1: left key pressed
-                value = 2: right key pressed
-                value = 3: both keys pressed
-                */
-            this.buttonValue = value
-            break;
-			
-        default:		// just in case a device exhibits unexpected capabilities  8-)
-				console.log(e.device.productName + ": Received UNEXPECTED input report " + e.reportId);
-				console.log(new Uint8Array(e.data.buffer));
-           
-            break;
-    }
-    if (!this.freshResponse) {
-        return;
-    }
-    // Create a new event
-    let outEvent = new CustomEvent('3dmouseinput', {
-        bubbles: true,
-        cancelable: true,
-        detail: {
-            controlValue: this.response_filter,
-            buttonValue: this.buttonValue
         }
-    });
-    window.dispatchEvent(outEvent);
-    
+        
+        for (let button_index = 0; button_index < this.dataSpecs.buttonMapping.length; button_index++) {
+            const {name: name, channel: chan, byte: byte, bit: bit} = this.dataSpecs.buttonMapping[button_index];
+            if (e.reportId === chan) {
+                this._workingState["buttonsChanged"] = true;
+                // update the button vector
+                const mask = 1 << bit;
+                this._workingState["buttonStates"][name] = (data.getUint8(byte) & mask) !== 0 ? 1 : 0;
+                this._workingState["buttonsValue"] |= mask
+            }
+        }
+        
+        this._workingState["t"] = Date.now() / 1000;
+            
+        if (this._workingState["controlChangeCount"] <= 1) {
+            return;
+        }
+        let filtered = null
+        const transIn = [this._workingState["x"], this._workingState["y"], this._workingState["z"]]
+        const rotIn = [this._workingState["r"], this._workingState["p"], this._workingState["ya"]]
+        if (this.filter) {
+            filtered = this.filter.process(transIn, rotIn);
+        }
+        let outEvent = new CustomEvent('3dmouseinput', {
+            bubbles: true,
+            cancelable: true,
+            detail: {
+                input: [transIn, rotIn],
+                filteredInput: filtered,
+                buttons: this._workingState["buttons"],
+            }
+        });
+        window.dispatchEvent(outEvent);
+        this._workingState["controlChangeCount"] = 0;
+        this._workingState["buttonsValue"] = 0
+        
+    }
 }
-}
-
-
-function softmax(Tx, Ty, Tz) {
-    let sum = Math.abs(Tx) + Math.abs(Ty) + Math.abs(Tz);
-
-    return {
-        wx: Math.abs(Tx)/sum,
-        wy: Math.abs(Ty)/sum,     
-        wz: Math.abs(Tz)/sum
-    };
-}
-
-function softmax_r(Rx, Ry, Rz) {
-    let sum = Math.abs(Rx) + Math.abs(Ry) + Math.abs(Rz);
-
-    return {
-        WX: Math.abs(Rx) / sum,
-        WY: Math.abs(Ry) / sum,
-        WZ: Math.abs(Rz) / sum
-    };   
-    
-}
-
