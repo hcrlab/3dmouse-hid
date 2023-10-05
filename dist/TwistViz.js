@@ -1,5 +1,6 @@
-import * as THREE from "https://unpkg.com/three@0.156.1/build/three.module.js"
-import {AxesHelper} from "https://unpkg.com/three@0.156.1/build/three.module.js"
+import * as THREE from 'three'
+import {AxesHelper} from 'three'
+import {Axes} from "./Axes.js";
 
 export class TwistViz {
 
@@ -8,21 +9,24 @@ export class TwistViz {
         this.scene = new THREE.Scene();
         this.anchorMarker = new AxesHelper(5);
         this.anchorMarker.setColors(0xaa0000, 0x00aa00, 0x000aa);
-        this.movingMarker = new AxesHelper(20);
+        this.movingMarker = new Axes({size: 10});
         this.movingMarker.setColors(0xff0000, 0x00ff00, 0x000ff);
         this.scene.add(this.movingMarker);
         this.scene.add(this.anchorMarker);
         this._animationRequest = null;
         // Camera
-        this.camera = new THREE.PerspectiveCamera(100, container.innerWidth / container.innerHeight, 0.6, 1000);
+        this.camera = new THREE.PerspectiveCamera(50, container.innerWidth / container.innerHeight, 0.6, 1000);
         // Renderer
         this.renderer = new THREE.WebGLRenderer({antialias: true});
         this.renderer.setClearColor("#233143"); // Set background colour
         container.appendChild(this.renderer.domElement); // Add renderer to HTML as a
         this.renderer.setSize(container.clientWidth, container.clientHeight);
         // Add ambient light
-        const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.3);
+        const directionalLight = new THREE.DirectionalLight( 0xffffff, 0.8);
+
         this.scene.add(ambientLight);
+        this.scene.add(directionalLight)
 
         this._resizeObserver = new ResizeObserver(this._elementResized.bind(this)).observe(container);
 
@@ -38,19 +42,19 @@ export class TwistViz {
         cancelAnimationFrame(this._animationRequest);
     }
 
-    setTwist(twist) {
+    setTwist([linear, angular]) {
         let marker = this.movingMarker
-        marker.position.x = -twist[0] * 6 
-        marker.position.z = -twist[1] * 6
-        marker.position.y = -twist[2] * 4
+        marker.position.x = linear[0]
+        marker.position.z = linear[1]
+        marker.position.y = linear[2]
 
-        marker.rotation.x = -twist[3] 
-        marker.rotation.z = -twist[4] 
-        marker.rotation.y = -twist[5]
+        marker.rotation.x = angular[0] 
+        marker.rotation.z = angular[1] 
+        marker.rotation.y = angular[2]
     }
 
     _render() {
-        this.renderer.setClearColor("#000000"); // Black background
+        this.renderer.setClearColor("#FFFFFF"); // Black background
         this.renderer.render(this.scene, this.camera);
         this._animationRequest = requestAnimationFrame(this._render.bind(this));
     }
