@@ -23,7 +23,7 @@ To run the interface against a kinematic model of a Franka:
 
     ros2 launch moveit_servo servo_example.launch.py
 
-Then try `test/test_ros.html`
+Then try `test/index.html`
 
 ### Testing with a Simulated UR5
 
@@ -36,19 +36,11 @@ Then try `test/test_ros.html`
     rosdep install --from-paths .
     sudo apt install ros-humble-ur-description ros-humble-controller-manager ros-humble-ur-moveit-config sudo apt install ros-humble-gazebo-ros-pkgs ros-humble-webbridge-suite ros-humble-ros2-control ros-humble-position-controllers
 
-    ros2 launch ur_simulation_gazebo ur_sim_moveit.launch.py ur_type:=ur5e
 
-    ros2 control load_controller --set-state configured forward_position_controller
-    ros2 control switch_controllers --deactivate joint_trajectory_controller --activate forward_position_controller
+    # ros2 topic pub /servo_node/delta_twist_cmds geometry_msgs/msg/TwistStamped "{ header: { stamp: 'now', 'frame_id': 'tool0' },  twist: {linear: {x: -0.1}, angular: {  }}}" -r 10
 
-    ros2 service call /servo_node/start_servo std_srvs/srv/Trigger {}
 
-    ros2 topic pub /servo_node/delta_twist_cmds geometry_msgs/msg/TwistStamped "{ header: { stamp: 'now', 'frame_id': 'tool0' },  twist: {linear: {x: -0.1}, angular: {  }}}" -r 10
-
-    # Load cameras into Gazebo
-    ./spawner.py camera_rig.urdf
-
-    ros2 run rosbridge_server rosbridge_websocket.py
+    ros2 launch 3dmouse-hid/ros/ur_teleop_sim.launch.py
 
 
 ## Usage
