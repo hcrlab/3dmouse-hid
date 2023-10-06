@@ -16,16 +16,19 @@ function makeCubicDeadbandFilter(weight, deadband) {
 export class SmoothingDeadbandFilter {
     constructor({
         deadband: deadband=0.1,
-        smoothing: smoothingWeight=0.5, 
-        softmaxWeight: softmaxWeight=0.1}) {
+        cubicDeadbandWeight: cubicDeadbandWeight = 0.3,
+        smoothing: smoothingWeight=0.5,
+        softmaxWeight: softmaxWeight=0.1,
+                translationMultiplier: translationMultiplier = 1.0,
+                rotationMultiplier: rotationMultiplier = 1.0}) {
             this.smoothing = smoothingWeight
             this._deadband = deadband
-            this._remappingWeight = remappingWeight
+            this._cubicDeadbandWeight = cubicDeadbandWeight
             this._softmaxWeight = softmaxWeight
-        this._deadbandFilter = makeCubicDeadbandFilter(remappingWeight, deadband)
-        this.rotationMultiplier = 1.0
-        this.translationMultiplier = 1.0
-        this._previousInput = [[0, 0, 0], [0, 0, 0]]
+        this._deadbandFilter = makeCubicDeadbandFilter(cubicDeadbandWeight, deadband)
+        this.translationMultiplier = translationMultiplier
+        this.rotationMultiplier = rotationMultiplier
+        this._previousOutput = [[0, 0, 0], [0, 0, 0]]
 
     }
 
@@ -35,34 +38,39 @@ export class SmoothingDeadbandFilter {
 
     set deadband(value) {
         this._deadband = value
-        this._deadbandFilter = makeCubicDeadbandFilter(this._remappingWeight, this._deadband)
+        this._deadbandFilter = makeCubicDeadbandFilter(this._cubicDeadbandWeight, this._deadband)
     }
 
     set filterWeight(value) {
-        this._remappingWeight = value
-        this._deadbandFilter = makeCubicDeadbandFilter(this._remappingWeight, this._deadband)
+        this._cubicDeadbandWeight = value
+        this._deadbandFilter = makeCubicDeadbandFilter(this._cubicDeadbandWeight, this._deadband)
     }
 
     process(transIn, rotIn) {
-        let transProcessed = transIn.map(this._deadbandFilter)
-        let rotProcessed = rotIn.map(this._deadbandFilter)
-        const transPrev = this._previousInput[0]
-        const rotPrev = this._previousInput[1]
-        // L1 norm
-        let magnitude = transProcessed.reduce((a, b) => a + Math.abs(b), 0)
-        magnitude = Math.min(magnitude, 1.0)
-        if (magnitude === 0.0) {
-            transProcessed.map((x, i) => transPrev * this.smoothing)
-        } else {
-            const transExp = transProcessed.slice().map(x => Math.exp(Math.abs(x) / this._softmaxWeight))
-            const transExpMagnitude = transExp.reduce((a, b) => a + b, 0)
-            let softmax = transExp.map(x => x / transExpMagnitude)
-            transProcessed = transProcessed.map((x, i) => x * softmax[i])
-            const transProcessedMag = transProcessed.reduce((a, b) => a + Math.abs(b), 0)
-            transProcessed = transProcessed.map((x, i) => x * (magnitude / transProcessedMag))
-        }
-        this._previousInput = [transProcessed, rotProcessed]
+        let transProcessed = this._processComponent(transIn, this._previousOutput[0], this.translationMultiplier)
+        let rotProcessed = this._processComponent(rotIn, this._previousOutput[1], this.rotationMultiplier)
+        this._previousOutput = [transProcessed, rotProcessed]
         return [transProcessed, rotProcessed]
+    }
+
+    _processComponent(v, vPrev, scaleFactor=1.0) {
+        let filtered = v.map(this._deadbandFilter)
+        // L1 norm
+        let filteredNorm = filtered.reduce((a, b) => a + Math.abs(b), 0)
+        filteredNorm = Math.min(filteredNorm, 1.0)
+        if (filteredNorm === 0.0) {
+            // Result is just decay of previous input
+            filtered = vPrev.map(x => x * this.smoothing)
+        } else {
+            const filteredExp = filtered.map(x => Math.exp(Math.abs(x) / this._softmaxWeight))
+            const transExpNorm = filteredExp.reduce((a, b) => a + b, 0)
+            let softmax = filteredExp.map(x => x / transExpNorm)
+            filtered = filtered.map((x, i) => x * softmax[i])
+            const softmaxedNorm = filtered.reduce((a, b) => a + Math.abs(b), 0)
+            filtered = filtered.map(x => x * (filteredNorm / softmaxedNorm) * scaleFactor)
+            filtered = filtered.map((x, i) => (1- this.smoothing) * x +  vPrev[i] * this.smoothing)
+        }
+        return filtered
     }
 
 }
@@ -149,12 +157,10 @@ export class ThreeDMouse {
         if (this._workingState["controlChangeCount"] <= 1) {
             return;
         }
-        let filtered = null
+
         const transIn = [this._workingState["x"], this._workingState["y"], this._workingState["z"]]
         const rotIn = [this._workingState["r"], this._workingState["p"], this._workingState["ya"]]
-        if (this.filter) {
-            filtered = this.filter.process(transIn, rotIn);
-        }
+        let filtered = this.filter ? this.filter.process(transIn, rotIn): null;
         let outEvent = new CustomEvent('3dmouseinput', {
             bubbles: true,
             cancelable: true,
