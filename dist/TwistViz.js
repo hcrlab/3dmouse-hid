@@ -6,24 +6,28 @@ export class TwistViz {
 
     constructor(container) {
         this.container = container
+        this.exageration = 1.
         this.scene = new THREE.Scene();
-        this.anchorMarker = new AxesHelper(5);
+        this.anchorMarker = new AxesHelper(.5);
         this.anchorMarker.setColors(0xaa0000, 0x00aa00, 0x000aa);
-        this.movingMarker = new Axes({size: 10});
+        this.movingMarker = new Axes({size: 1});
         this.movingMarker.setColors(0xff0000, 0x00ff00, 0x000ff);
         this.scene.add(this.movingMarker);
         this.scene.add(this.anchorMarker);
         this._animationRequest = null;
         // Camera
         this.camera = new THREE.PerspectiveCamera(50, container.innerWidth / container.innerHeight, 0.6, 1000);
+        this.camera.up.set(0,0,1)
         // Renderer
         this.renderer = new THREE.WebGLRenderer({antialias: true});
-        this.renderer.setClearColor("#233143"); // Set background colour
+        this.renderer.setClearColor("#FFFFFF"); // Set background colour
         container.appendChild(this.renderer.domElement); // Add renderer to HTML as a
         this.renderer.setSize(container.clientWidth, container.clientHeight);
         // Add ambient light
-        const ambientLight = new THREE.AmbientLight(0xffffff, 0.3);
-        const directionalLight = new THREE.DirectionalLight( 0xffffff, 0.8);
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
+        const directionalLight = new THREE.DirectionalLight( 0xffffff, 1.5);
+        directionalLight.position.x = -10
+        directionalLight.position.z = 10
 
         this.scene.add(ambientLight);
         this.scene.add(directionalLight)
@@ -44,17 +48,16 @@ export class TwistViz {
 
     setTwist([linear, angular]) {
         let marker = this.movingMarker
-        marker.position.x = linear[0]
-        marker.position.z = linear[1]
-        marker.position.y = linear[2]
+        marker.position.x = linear[0] * this.exageration
+        marker.position.y = linear[1] * this.exageration
+        marker.position.z = linear[2] * this.exageration
 
         marker.rotation.x = angular[0] 
-        marker.rotation.z = angular[1] 
-        marker.rotation.y = angular[2]
+        marker.rotation.y = angular[1]
+        marker.rotation.z = angular[2]
     }
 
     _render() {
-        this.renderer.setClearColor("#FFFFFF"); // Black background
         this.renderer.render(this.scene, this.camera);
         this._animationRequest = requestAnimationFrame(this._render.bind(this));
     }
@@ -66,7 +69,7 @@ export class TwistViz {
     }
 
     setCameraToInitialState() {
-        this.camera.position.set(30, 5, 2);
+        this.camera.position.set(-.5, -3, 3);
         this.camera.lookAt(0, 0, 0);
     }
 
