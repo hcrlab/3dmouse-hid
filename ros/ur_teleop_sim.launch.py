@@ -47,6 +47,13 @@ def generate_launch_description():
         ],
         shell=True
     )
+    move_to_home_pose = ExecuteProcess(
+        cmd=[
+            './move_to_joint_angles.py',
+            '0.0 -108 90 -86 -88 -7'
+        ],
+        shell=True
+    )
     load_controller = ExecuteProcess(
     cmd= [FindExecutable(name='ros2'), "control" ,"load_controller", "--set-state", "configured", "forward_position_controller"], output="screen"
     )
@@ -55,8 +62,8 @@ def generate_launch_description():
     return LaunchDescription([
         ur_gazebo_sim,
         rosbridge_websocket,
-        TimerAction(period=20.0, actions=[load_controller, spawn_cameras]),
-        #RegisterEventHandler(OnProcessExit(target_action=spawn_cameras, on_exit=[load_controller])),
+        TimerAction(period=10.0, actions=[move_to_home_pose, spawn_cameras]),
+        RegisterEventHandler(OnProcessExit(target_action=move_to_home_pose, on_exit=[load_controller])),
         RegisterEventHandler(OnProcessExit(target_action=load_controller, on_exit=[swap_controllers])),
         RegisterEventHandler(OnProcessExit(target_action=swap_controllers, on_exit=[enable_servo]))
     ])
