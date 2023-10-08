@@ -77,6 +77,7 @@ export class ThreeDMouse {
         }
         switch (e.reportId) {
             case 1: // Translation event
+                  
 
                 // Get translation values from the data
                 this.response.Tx = e.data.getInt16(0, true) / 350;
