@@ -60,13 +60,31 @@
 </body>
 <script type="module">
     import { ThreeDMouse, SmoothingDeadbandFilter } from '../dist/ThreeDMouse.js';
-    import {TwistViz} from '../dist/TwistViz.js';
-    import DataManager from '../dist/dataManager.js';
+    import { rotateTwist } from '../dist/linAlg.js';
+    import { TwistViz} from '../dist/TwistViz.js';
     import { Robot, subscribeToCameraTopic } from "./main_robot.js";
     import uPlot from 'uplot'
 
 
     let twistViz = null;
+    let currentMapping = 0
+    let cameraMappings = [
+        new THREE.Matrix3(
+            0, -1, 0,
+            1, 0, 0,
+            0, 0, 1
+        ),
+        new THREE.Matrix3(
+            1, 0, 0,
+            0, 1, 0,
+            0, 0, 1
+        ),
+        new THREE.Matrix3(
+            1, 0, 0,
+            0, 1, 0,
+            0, 0, 1
+        )]
+
 
     window.addEventListener('DOMContentLoaded', (event) => {
         let ros = initializeRos()
@@ -89,10 +107,9 @@
             twistViz.begin()
             window.addEventListener("3dmouseinput", event => {
                 let values = event.detail.filteredInput
-                // Process the input data and update the marker
+                let rotated = rotateTwist(values, cameraMappings[currentMapping])
                 twistViz.setTwist(values);
-                robot.move(values);
-
+                robot.move(rotated);
             });
 
                 connectButton.disabled = true;

@@ -1,3 +1,4 @@
+import {ensureVector3} from "../dist/linAlg.js";
 
 export class Robot {
   constructor(ros) {
@@ -7,32 +8,20 @@ export class Robot {
       name: '/servo_node/delta_twist_cmds',
       messageType: 'geometry_msgs/msg/TwistStamped'
     });
-
-    this.openTopic = new ROSLIB.Topic({
-      ros: this.ros,
-      name: '/open_grip',
-      messageType: 'std_msgs/Empty'
-    });
-
-    this.closeTopic = new ROSLIB.Topic({
-      ros: this.ros,
-      name: '/close_grip',
-      messageType: 'std_msgs/Empty'
-    });
-
   }
 
-  move([linear, angular]) {
+  move(twist, frame="base_link") {
+    let [linear, angular] = [ensureVector3(twist[0]), ensureVector3(twist[1])]
     let linearValues = {
-      x: linear[0],
-      y: linear[1],
-      z: linear[2]
+      x: linear.x,
+      y: linear.y,
+      z: linear.z
     };
 
     let angularValues = {
-      x: angular[0],
-      y: angular[1],
-      z: angular[2]
+      x: angular.x,
+      y: angular.y,
+      z: angular.z
     };
 
     const twistMsg = new ROSLIB.Message({
@@ -42,17 +31,14 @@ export class Robot {
       }
     });
 
-    const header = new ROSLIB.Message({
-      stamp: {
-        sec: Math.floor(Date.now() / 1000),
-        nanosec: (Date.now() % 1000) * 1e6
-      },
-      frame_id: 'tool0'
+    twistMsg.header = new ROSLIB.Message({
+        stamp: {
+            sec: Math.floor(Date.now() / 1000),
+            nanosec: (Date.now() % 1000) * 1e6
+        },
+        frame_id: frame
     });
-
-    twistMsg.header = header;
     this.twistTopic.publish(twistMsg);
-    console.log('Published Twist message to robotTopic.');
   }
 
   openGripper() {

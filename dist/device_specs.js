@@ -8,7 +8,11 @@ function createNamedTuple(name, properties) {
     return tuple;
   };
 }
-
+// Creating a mapping:
+// We map all devices so that the +X axis extends out the right of the puck, +Y out the front, and +Z upward
+// Roll pitch and yaw are configured so that positive rotations correspond to clockwise motion when looking
+// along the positive axis. When mapped correctly, the TwistViz should appear to mimic the movement applied
+// to the device,
 const AxisSpec = createNamedTuple("AxisSpec", ["channel", "byte", "scale"]);
 const ButtonSpec = createNamedTuple("ButtonSpec", ["name", "channel", "byte", "bit"]);
 const DeviceSpec = createNamedTuple("DeviceSpec", ["name", "hidIds", "ledId", "mappings", "buttonMapping", "axisScale"]);
@@ -22,8 +26,8 @@ export const DEVICE_SPECS = {
       "x": new AxisSpec(1, 0, 1),
       "y": new AxisSpec(1, 2, -1),
       "z": new AxisSpec(1, 4, -1),
-      "p": new AxisSpec(2, 0, -1),
-      "r": new AxisSpec(2, 2, -1),
+      "r": new AxisSpec(2, 0, -1),
+      "p": new AxisSpec(2, 2, -1),
       "ya": new AxisSpec(2, 4, 1),
     },
     [
@@ -40,8 +44,8 @@ export const DEVICE_SPECS = {
       "x": new AxisSpec(1, 0, 1),
       "y": new AxisSpec(1, 2, -1),
       "z": new AxisSpec(1, 4, -1),
-      "p": new AxisSpec(2, 0, -1),
-      "r": new AxisSpec(2, 2, -1),
+      "r": new AxisSpec(2, 0, -1),
+      "p": new AxisSpec(2, 2, -1),
       "ya": new AxisSpec(2, 4, 1),
     },
     [
@@ -58,8 +62,8 @@ export const DEVICE_SPECS = {
       "x": new AxisSpec(1, 0, 1),
       "y": new AxisSpec(1, 2, -1),
       "z": new AxisSpec(1, 4, -1),
-      "p": new AxisSpec(1, 6, -1),
-      "r": new AxisSpec(1, 8, -1),
+      "r": new AxisSpec(1, 6, -1),
+      "p": new AxisSpec(1, 8, -1),
       "ya": new AxisSpec(1, 10, 1),
     },
     [
@@ -89,9 +93,9 @@ export const DEVICE_SPECS = {
       "x": new AxisSpec(1, 0, 1),
       "y": new AxisSpec(1, 2, -1),
       "z": new AxisSpec(1, 4, -1),
-      "p": new AxisSpec(2, 0, -1),
-      "r": new AxisSpec(2, 2, -1),
-      "ya": new AxisSpec(2, 4, 1),
+      "r": new AxisSpec(2, 0, 1),
+      "p": new AxisSpec(2, 2, -1),
+      "ya": new AxisSpec(2, 4, -1),
     },
     [
       new ButtonSpec("MENU", 3, 1, 0),
@@ -120,8 +124,8 @@ export const DEVICE_SPECS = {
       "x": new AxisSpec(1, 0, 1),
       "y": new AxisSpec(1, 2, -1),
       "z": new AxisSpec(1, 4, -1),
-      "p": new AxisSpec(1, 6, -1),
-      "r": new AxisSpec(1, 8, -1),
+      "r": new AxisSpec(1, 6, -1),
+      "p": new AxisSpec(1, 8, -1),
       "ya": new AxisSpec(1, 10, 1),
     },
     [
@@ -138,8 +142,8 @@ export const DEVICE_SPECS = {
       "x": new AxisSpec(1, 0, 1),
       "y": new AxisSpec(1, 2, -1),
       "z": new AxisSpec(1, 4, -1),
-      "p": new AxisSpec(1, 6, -1),
-      "r": new AxisSpec(1, 8, -1),
+      "r": new AxisSpec(1, 6, -1),
+      "p": new AxisSpec(1, 8, -1),
       "ya": new AxisSpec(1, 10, 1),
     },
     [

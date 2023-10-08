@@ -1,20 +1,7 @@
 import * as THREE from 'three'
 import {Axes} from "./Axes.js";
+import {ensureVector3, integrateTwistStepwise} from "./linAlg.js";
 
-function integrateTwistStepwise(twist, time, steps) {
-    const [linear, angular] = [new THREE.Vector3(...twist[0]), new THREE.Vector3(...twist[1])]
-    const dt = time / steps
-    let points = [new THREE.Vector3(0,0,0)]
-    let stepRotation = angular.clone().multiplyScalar(dt)
-    let linearStep = linear.clone().multiplyScalar(dt)
-    for (let i = 1; i < steps; i++) {
-        // New point is the previous rotated then translated
-        const newPoint = points[i - 1].clone()
-        newPoint.applyEuler(new THREE.Euler(...stepRotation)).add(linearStep)
-        points.push(newPoint)
-    }
-    return points
-}
 
 export class TwistViz {
 
@@ -65,17 +52,14 @@ export class TwistViz {
         cancelAnimationFrame(this._animationRequest);
     }
 
-    setTwist([linear, angular]) {
-        const twistTracePoints = integrateTwistStepwise([linear, angular], 1, 100)
+    setTwist(twist) {
+        const twistTracePoints = integrateTwistStepwise(twist, 1, 100)
         this.twistTrace.geometry.setFromPoints(twistTracePoints)
 
         let marker = this.movingMarker
         const finalPoint = twistTracePoints[twistTracePoints.length - 1]
         marker.position.copy(finalPoint)
-
-        marker.rotation.x = angular[0] 
-        marker.rotation.y = angular[1]
-        marker.rotation.z = angular[2]
+        marker.rotation.copy(new THREE.Euler().setFromVector3(ensureVector3(twist[1])))
     }
 
     _render() {
@@ -101,7 +85,6 @@ export class TwistViz {
         this.movingMarker.rotation.x =0;
         this.movingMarker.rotation.y =0;
         this.movingMarker.rotation.z =0;
-    
     }
 
 }
