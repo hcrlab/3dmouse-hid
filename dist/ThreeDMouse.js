@@ -6,7 +6,7 @@ function makeCubicDeadbandFilter(weight, deadband) {
     const iw = 1 - weight
     const scaleFactor = weight * d3 + iw * deadband
     return (x) => {
-        if (Math.abs(x) < deadband) {
+        if (Math.abs(x) < deadband || x === 0) {
             return 0;
         }
        return ((weight * Math.pow(x, 3) + iw * x) - ((Math.abs(x) / x) * scaleFactor)) / (1 - scaleFactor)
@@ -15,25 +15,20 @@ function makeCubicDeadbandFilter(weight, deadband) {
 
 export class SmoothingDeadbandFilter {
     constructor({
-        deadband: deadband=0.1,
-        cubicDeadbandWeight: cubicDeadbandWeight = 0.3,
-        smoothing: smoothingWeight=0.5,
-        softmaxWeight: softmaxWeight=0.1,
-                translationMultiplier: translationMultiplier = 1.0,
-                rotationMultiplier: rotationMultiplier = 1.0}) {
-            this.smoothing = smoothingWeight
-            this._deadband = deadband
-            this._cubicDeadbandWeight = cubicDeadbandWeight
-            this._softmaxWeight = softmaxWeight
+                    deadband: deadband=0.1,
+                    cubicDeadbandWeight: cubicDeadbandWeight = 0.3,
+                    smoothing: smoothingWeight=0.5,
+                    softmaxWeight: softmaxWeight=0.5,
+                    translationMultiplier: translationMultiplier = 1.0,
+                    rotationMultiplier: rotationMultiplier = 1.0}) {
+        this.smoothing = smoothingWeight
+        this._deadband = deadband
+        this._cubicDeadbandWeight = cubicDeadbandWeight
+        this.softmaxWeight = softmaxWeight
         this._deadbandFilter = makeCubicDeadbandFilter(cubicDeadbandWeight, deadband)
         this.translationMultiplier = translationMultiplier
         this.rotationMultiplier = rotationMultiplier
         this._previousOutput = [[0, 0, 0], [0, 0, 0]]
-
-    }
-
-    set deadbandType(value) {
-
     }
 
     set deadband(value) {
@@ -41,7 +36,7 @@ export class SmoothingDeadbandFilter {
         this._deadbandFilter = makeCubicDeadbandFilter(this._cubicDeadbandWeight, this._deadband)
     }
 
-    set filterWeight(value) {
+    set cubicDeadbandWeight(value) {
         this._cubicDeadbandWeight = value
         this._deadbandFilter = makeCubicDeadbandFilter(this._cubicDeadbandWeight, this._deadband)
     }
@@ -62,7 +57,7 @@ export class SmoothingDeadbandFilter {
             // Result is just decay of previous input
             filtered = vPrev.map(x => x * this.smoothing)
         } else {
-            const filteredExp = filtered.map(x => Math.exp(Math.abs(x) / this._softmaxWeight))
+            const filteredExp = filtered.map(x => Math.exp(Math.abs(x) / this.softmaxWeight))
             const transExpNorm = filteredExp.reduce((a, b) => a + b, 0)
             let softmax = filteredExp.map(x => x / transExpNorm)
             filtered = filtered.map((x, i) => x * softmax[i])
@@ -76,13 +71,15 @@ export class SmoothingDeadbandFilter {
 }
 
 export class ThreeDMouse {
-    constructor(device, dataSpecs) {
+    constructor(device, dataSpecs, {emitRepeatedEvents: emitRepeatedEvents=false, filter: filter}) {
         this.device = device;
         this.dataSpecs = dataSpecs
-        this.filter = null
+        this.filter = filter
         this.device.addEventListener("inputreport", this.handleInputReport.bind(this));
         navigator.hid.addEventListener("connect", this.handleConnectedDevice);
         navigator.hid.addEventListener("disconnect", this.handleDisconnectedDevice);
+        // Leaving t as a sentinel value to make sure we don't fire a misleading empty event
+        // when using `emitRepeatedEvents`.
         this._workingState =  {
             "t": -1,
             "x": 0.,
@@ -96,18 +93,41 @@ export class ThreeDMouse {
             "buttonsChanged": false,
             "controlChangeCount": 0,
         }
+        // The device is connected at this point, so start the repeat event timer
+        // if the user requested it
+        this.emitRepeatedEvents = emitRepeatedEvents
+        this._lastEmittedTime = Date.now() / 1000;
+        this._emitRepeatedEventsInterval = null
     }
 
     handleConnectedDevice(e) {
+        // Kicking the interval
+        this._emitRepeatedEvents = this._emitRepeatedEvents
         console.log(`Device ${e.device.productName} is connected.`);
     }
     handleDisconnectedDevice(e) {
+        if (this._emitRepeatedEventsInterval) window.clearInterval(this._emitRepeatedEventsInterval)
         console.log(`Device ${e.device.productName} is disconnected.`);
     }
-    configureFilter(filter) {
-        this.filter = filter
+
+    set emitRepeatedEvents(value) {
+        this._emitRepeatedEvents = value
+        if (this._emitRepeatedEvents) {
+            this._emitRepeatedEventsInterval = setInterval(this._emitRepeatedEvent.bind(this), 1);
+        } else {
+            window.clearInterval(this._emitRepeatedEventsInterval)
+        }
     }
-    static async requestDevice() {
+
+    _emitRepeatedEvent() {
+        const currentTime = Date.now() / 1000;
+        if (currentTime - this._lastEmittedTime > .007) {
+            this._workingState["t"] = currentTime
+            window.dispatchEvent(this._makeEventFromState(this._workingState));
+            this._lastEmittedTime = this._workingState["t"]
+        }
+    }
+    static async requestDevice(options) {
         const devices = await navigator.hid.requestDevice({ filters: HID_FILTERS });
 
         if (devices.length === 0) {
@@ -121,7 +141,7 @@ export class ThreeDMouse {
             await this.device.open();
             console.log("Opened device: " + this.device.productName);
             const driverName = IDS_TO_NAME[[this.device.vendorId, this.device.productId]];
-            return new ThreeDMouse(this.device, DEVICE_SPECS[driverName])
+            return new ThreeDMouse(this.device, DEVICE_SPECS[driverName], options)
 
         } else {
             console.log("Device is already open:", this.device.productName);
@@ -129,6 +149,10 @@ export class ThreeDMouse {
       
     }
 
+    /**
+     * Handle WebHID events for a 3D mouse. Events typically come in at 7ms intervals
+     * @param e
+     */
     handleInputReport(e) {
         let data = e.data
 
@@ -151,28 +175,32 @@ export class ThreeDMouse {
                 this._workingState["buttonsValue"] |= mask
             }
         }
-        
-        this._workingState["t"] = Date.now() / 1000;
             
-        if (this._workingState["controlChangeCount"] <= 1) {
+        if (this._workingState["controlChangeCount"] <= 1 && !this._workingState["buttonsChanged"]) {
             return;
         }
+        this._workingState["t"] = Date.now() / 1000;
 
-        const transIn = [this._workingState["x"], this._workingState["y"], this._workingState["z"]]
-        const rotIn = [this._workingState["r"], this._workingState["p"], this._workingState["ya"]]
+        const outEvent = this._makeEventFromState(this._workingState)
+        window.dispatchEvent(outEvent);
+        this._lastEmittedTime = this._workingState["t"]
+        this._workingState["controlChangeCount"] = 0;
+        this._workingState["buttonsValue"] = 0
+        
+    }
+
+    _makeEventFromState(state) {
+        const transIn = [state["x"], state["y"], state["z"]]
+        const rotIn = [state["r"], state["p"], state["ya"]]
         let filtered = this.filter ? this.filter.process(transIn, rotIn): null;
-        let outEvent = new CustomEvent('3dmouseinput', {
+        return new CustomEvent('3dmouseinput', {
             bubbles: true,
             cancelable: true,
             detail: {
                 input: [transIn, rotIn],
                 filteredInput: filtered,
-                buttons: this._workingState["buttons"],
+                buttons: state["buttons"],
             }
         });
-        window.dispatchEvent(outEvent);
-        this._workingState["controlChangeCount"] = 0;
-        this._workingState["buttonsValue"] = 0
-        
     }
 }

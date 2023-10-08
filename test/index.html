@@ -10,15 +10,14 @@
           "imports": {
             "three": "https://unpkg.com/three@0.156.1/build/three.module.js",
             "three/addons/": "https://unpkg.com/three@0.156.1/examples/jsm/",
-            "uplot": "https://cdn.jsdelivr.net/npm/uplot@1.6.25/+esm"
+            "uplot": "https://cdn.jsdelivr.net/npm/uplot@1.6.25/+esm",
+            "tweakpane": "https://cdn.jsdelivr.net/npm/tweakpane@4.0.1/dist/tweakpane.min.js"
           }
         }
     </script>
     <script type="module" src="https://cdn.jsdelivr.net/npm/roslib@1/build/roslib.min.js"></script>
     <style>
         body {
-            margin: 0px;
-            height: 100vh;
         }
         canvas {
             display: block;
@@ -31,28 +30,22 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/uplot@1.6.25/dist/uPlot.min.css" integrity="sha256-32MMao1vjur/JktQ9zzlsRT2Rv/ZoLt08EmwoAE1+gQ=" crossorigin="anonymous">
 </head>
 <body>
-    <p id="errorMessage">WebHID is not available. Are you using Chrome or Edge? Are you running from <tt>localhost</tt> or HTTPS?</p>
-    <button id="hidButton" style="display: none;">Request HID Device</button>
-    <button id="downloadButton">DownloadCSV</button>
-    <p class="text">Connection status: <span class="text" id="status"></span></p>
 
-    <button id="rotateButton">Rotate</button>
-    <button id="translateButton">Translate</button>
-    <button id="Both(T+R)">Both(T+R)</button>
-    <div id="plot"></div>
-    <div id="inputViz"></div>
 
     <div>
+        <div id="configuration"></div>
+        <div id="plot"></div>
+        <div id="inputViz"></div>
         <div>
-            <canvas id="view0" alt="Camera 0 Feed" ></canvas>
+            <canvas id="view0"></canvas>
         </div>
 
         <div>
-            <canvas id="view1" alt="Camera 1 Feed" >
+            <canvas id="view1"></canvas>
         </div>
 
         <div>
-            <canvas id="view2" alt="Camera 2 Feed" >
+            <canvas id="view2"></canvas>
         </div>
     </div>
 
@@ -64,21 +57,50 @@
     import { TwistViz} from '../dist/TwistViz.js';
     import { Robot, subscribeToCameraTopic } from "./main_robot.js";
     import uPlot from 'uplot'
+    import {Pane} from 'tweakpane';
+    import * as THREE from 'three'
 
-
+    let threeDMouse = null
+    let filter = new SmoothingDeadbandFilter({smoothing: 0.5, deadband: 0.1})
     let twistViz = null;
-    let currentMapping = 0
+    let pane = null
+    const configurationParams = {
+        message: "",
+        rosStatus: false,
+        smoothing: .9,
+        softmaxWeight: 50,
+        deadbandWeight: .4,
+        translationEnabled: true,
+        rotationEnabled: true,
+        deadbandSize: .01,
+    };
+    let currentMapping = 1
+    let connectButton
     let cameraMappings = [
-        new THREE.Matrix3(
+        [new THREE.Matrix3(
             0, -1, 0,
             1, 0, 0,
             0, 0, 1
-        ),
-        new THREE.Matrix3(
-            1, 0, 0,
+            ),
+            'base_link',
+            new THREE.Matrix4(
+                1, 0, 0, 0,
+                0, 1, 0, -5,
+                0, 0, 1, 2,
+                0, 0, 0, 1),
+        ],
+        [new THREE.Matrix3(
             0, 1, 0,
+            -1, 0, 0,
             0, 0, 1
         ),
+            'base_link',
+            new THREE.Matrix4(
+                1, 0, 0, 0,
+                0, 1, 0, -.0001,
+                0, 0, 1, 5,
+                0, 0, 0, 1),
+        ],
         new THREE.Matrix3(
             1, 0, 0,
             0, 1, 0,
@@ -86,67 +108,83 @@
         )]
 
 
+
     window.addEventListener('DOMContentLoaded', (event) => {
+        pane = new Pane({container: document.getElementById("configuration")});
+        connectButton = pane.addButton({title: "Connect 3D Mouse", disabled: true})
+        pane.addBinding(configurationParams, 'message', {readonly: true, multiline: true, bufferSize: 5})
+        pane.addBinding(configurationParams, 'rosStatus', {readOnly: true})
+        const f = pane.addFolder({
+            title: 'Filtering',
+            disabled: true
+        });
+        f.addBinding(configurationParams, "translationEnabled").on("change", e => {
+            filter.translationMultiplier = e.value ? 1. : 0.;
+        })
+        f.addBinding(configurationParams, "rotationEnabled").on("change", e => {
+            filter.rotationMultiplier = e.value ? 1. : 0.;
+        })
+        f.addBinding(
+            configurationParams, 'softmaxWeight',
+            {min: 0.01, max: 100}
+        ).on("change", e => {
+            filter.softmaxWeight = e.value
+        })
+        f.addBinding(
+            configurationParams, 'deadbandSize',
+            {min: 0., max:1.0}
+        ).on("change", e => {
+            filter.deadband = e.value
+        })
+        f.addBinding(
+            configurationParams, 'deadbandWeight',
+            {min: 0, max:10}
+        ).on("change", e => {
+            filter.cubicDeadbandWeight = e.value
+        })
+
+
         let ros = initializeRos()
         let robot = new Robot(ros)
         if (navigator.hid) {
-            document.getElementById("errorMessage").innerText = "";
-            document.getElementById("hidButton").style.display = "block";
+            configurationParams["message"] = "";
+            connectButton.disabled = false
         } else {
             return
         }
 
-        const connectButton = document.getElementById('hidButton')
-        connectButton.addEventListener('click', () => 
-        ThreeDMouse.requestDevice().then(device => {
-            if (!device) {
-                return
-            }
-            device.configureFilter(new SmoothingDeadbandFilter({smoothing: 0.5, deadband: 0.1}));
-            twistViz = new TwistViz(document.getElementById("inputViz"));
-            twistViz.begin()
-            window.addEventListener("3dmouseinput", event => {
-                let values = event.detail.filteredInput
-                let rotated = rotateTwist(values, cameraMappings[currentMapping])
-                twistViz.setTwist(values);
-                robot.move(rotated);
-            });
+        connectButton.on('click', () =>
+            ThreeDMouse.requestDevice(
+                {emitRepeatedEvents: true,
+                 filter: filter}
+            ).then(device => {
+                if (!device) {
+                    return
+                }
+                twistViz = new TwistViz(document.getElementById("inputViz"));
+                twistViz.begin()
+                window.addEventListener("3dmouseinput", event => {
+                    let values = event.detail.filteredInput
+                    let [frameRotation, controlFrame, cameraPose] = cameraMappings[currentMapping]
+                    let rotated = rotateTwist(values, frameRotation)
+                    twistViz.configureForView(null, cameraPose)
+                    twistViz.setTwist(values, controlFrame);
+                    robot.move(rotated);
+                });
 
-                connectButton.disabled = true;
+                threeDMouse = device
+                connectButton.disabled = true
+                f.disabled = false
             }).catch(error => {
-                document.getElementById("errorMessage").innerText = error;
+                configurationParams["message"] = error
+                pane.refresh()
             })
         );
-        document.getElementById('downloadButton').addEventListener('click', downloadAccumulatedData);
         subscribeToCameraTopic(ros, '/camera0/image_raw', document.getElementById('view0'));
         subscribeToCameraTopic(ros, '/camera1/image_raw', document.getElementById('view1'));
         subscribeToCameraTopic(ros, '/camera2/image_raw', document.getElementById('view2'));
 
     });
-
-    function arrayToCSV(data) {
-            return data.map(row => row.join(',')).join('\n');
-        }
-    function downloadCSV(csvContent, fileName = "data.csv") {
-        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-        const link = document.createElement("a");
-        
-        const url = URL.createObjectURL(blob);
-        link.setAttribute("href", url);
-        link.setAttribute("download", fileName);
-        link.style.visibility = 'hidden';
-        
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-    }
-
-
-    function downloadAccumulatedData() {
-        const csvContent = arrayToCSV(DataManager.getData());
-        downloadCSV(csvContent, "output.csv");
-    }
-
 
     function makePlot(container, data) {
         let fmtVal = (u, raw, sidx, didx) => {
@@ -218,7 +256,7 @@
                 },
             ],
             axes: [
-                {},
+                { show: false},
                 {
                     scale: '%',
                     values: (u, vals, space) => vals.map(v => +v.toFixed(1)),
@@ -251,85 +289,24 @@
         i+= 1
     })
 
-    let activeButton = null;
-
-    function activateButton(clickedButton, actionType) {
-        const enlargedWidth = '800px';
-        const enlargedHeight = '450px';
-        const reducedWidth = '600px';
-        const reducedHeight = '400px';
-
-        // Reset all images to their reduced size
-        let images = document.querySelectorAll('img');
-        for (let img of images) {
-            img.style.width = reducedWidth;
-            img.style.height = reducedHeight;
-            img.style.margin = '0';  // Reset the margins
-        }
-
-        // Reset the previous active button (if any)
-        if (activeButton) {
-            activeButton.style.backgroundColor = '';
-        }
-
-        // Execute the functionality based on the action type
-        switch (actionType) {
-            case 'action0':
-                window.actionType='action0'
-                window.globalInputData =window.movefront
-                adjustImageSize('displayedImageCamera0', enlargedWidth, enlargedHeight);
-                break;
-            case 'action1':
-                window.actionType='action1'
-                window.globalInputData =window.movetop
-                adjustImageSize('displayedImageCamera1', enlargedWidth, enlargedHeight);
-                break;
-            case 'action2':
-                window.actionType='action2'
-                window.globalInputData =window.moveside
-                adjustImageSize('displayedImageCamera2', enlargedWidth, enlargedHeight);
-                break;
-            default:
-                alert('Unknown action!');
-        }
-
-        // Activate the clicked button
-        clickedButton.style.backgroundColor = 'red';
-
-        // Update the active button reference
-        activeButton = clickedButton;
-
-    }
-    window.activateButton = activateButton;
-
-    function adjustImageSize(imageId, width, height) {
-        let img = document.getElementById(imageId);
-        let widthDifference = parseInt(width) - img.clientWidth;
-        let heightDifference = parseInt(height) - img.clientHeight;
-
-        img.style.width = width;
-        img.style.height = height;
-        img.style.margin = `-${heightDifference / 2}px -${widthDifference / 2}px`;  // Adjust margins
-    }
-
     function initializeRos(){
-    let ros = new ROSLIB.Ros({
-        url: 'ws://127.0.0.1:9090'
-      });
-  
-      ros.on('connection', () => {
-        document.getElementById('status').innerHTML = 'Connected';
-      });
-  
-      ros.on('error', (error) => {
-        document.getElementById('status').innerHTML = 'Error';
-      });
-  
-      ros.on('close', () => {
-        document.getElementById('status').innerHTML = 'Closed';
-      });
-    return ros
-}
+        let ros = new ROSLIB.Ros({
+            url: 'ws://127.0.0.1:9090'
+          });
+
+          ros.on('connection', () => {
+            configurationParams.rosStatus = true
+          });
+
+          ros.on('error', (error) => {
+            configurationParams.message = "ROS connection failed";
+          });
+
+          ros.on('close', () => {
+            configurationParams.rosStatus = false
+          });
+        return ros
+    }
 
 </script>
 </html>

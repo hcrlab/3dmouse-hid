@@ -7,7 +7,6 @@ export class TwistViz {
 
     constructor(container) {
         this.container = container
-        this.exageration = 1.
         this.scene = new THREE.Scene();
         this.anchorMarker = new Axes({size: .5, thickness: 0.025, opacity: 0.25});
         this.anchorMarker.setColors(0xff0000, 0x00ff00, 0x000ff);
@@ -25,9 +24,9 @@ export class TwistViz {
 
         this.camera = new THREE.PerspectiveCamera(50, container.innerWidth / container.innerHeight, 0.6, 1000);
         this.camera.up.set(0,0,1)
-        this.renderer = new THREE.WebGLRenderer({antialias: true});
-        this.renderer.setClearColor("#FFFFFF"); // Set background colour
-        container.appendChild(this.renderer.domElement); // Add renderer to HTML as a
+        this.renderer = new THREE.WebGLRenderer({antialias: true, alpha: true});
+        this.renderer.setClearColor("#FFFFFF", 0)
+        container.appendChild(this.renderer.domElement)
         this.renderer.setSize(container.clientWidth, container.clientHeight);
         const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
         const directionalLight = new THREE.DirectionalLight( 0xffffff, 1.5);
@@ -62,6 +61,12 @@ export class TwistViz {
         marker.rotation.copy(new THREE.Euler().setFromVector3(ensureVector3(twist[1])))
     }
 
+    setMarkerOrientation(rotation) {
+        const rotMatrix4 = new THREE.Matrix4().setFromMatrix3(rotation)
+        this.anchorMarker.setRotationFromMatrix(rotMatrix4)
+        this.movingMarker.setRotationFromMatrix(rotMatrix4)
+    }
+
     _render() {
         this.renderer.render(this.scene, this.camera);
         this._animationRequest = requestAnimationFrame(this._render.bind(this));
@@ -76,6 +81,12 @@ export class TwistViz {
     setCameraToInitialState() {
         this.camera.position.set(-.5, -3, 3);
         this.camera.lookAt(0, 0, 0);
+    }
+
+    configureForView(targetPose, cameraPose) {
+        let position = new THREE.Vector3().setFromMatrixPosition(cameraPose)
+        this.camera.position.copy(position)
+        this.camera.lookAt(0,0,0)
     }
 
     reset(){
