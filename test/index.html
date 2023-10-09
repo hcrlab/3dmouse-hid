@@ -10,44 +10,69 @@
           "imports": {
             "three": "https://unpkg.com/three@0.156.1/build/three.module.js",
             "three/addons/": "https://unpkg.com/three@0.156.1/examples/jsm/",
-            "uplot": "https://cdn.jsdelivr.net/npm/uplot@1.6.25/+esm",
             "tweakpane": "https://cdn.jsdelivr.net/npm/tweakpane@4.0.1/dist/tweakpane.min.js"
           }
         }
     </script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.1/js/bootstrap.bundle.min.js" integrity="sha512-ToL6UYWePxjhDQKNioSi4AyJ5KkRxY+F1+Fi7Jgh0Hp5Kk2/s8FD7zusJDdonfe5B00Qw+B8taXxF6CFLnqNCw==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
     <script type="module" src="https://cdn.jsdelivr.net/npm/roslib@1/build/roslib.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.1/css/bootstrap.min.css" integrity="sha512-Z/def5z5u2aR89OuzYcxmDJ0Bnd5V1cKqBEbvLOiUNWdg9PQeXVvXLI90SE4QOHGlfLqUnDNVAYyZi8UwUTmWQ==" crossorigin="anonymous" referrerpolicy="no-referrer">
     <style>
         body {
+            background-color: #111;
+            margin: 1rem;
+        }
+        #interface {
+            display: inline-flex;
+            gap: .5rem
         }
         canvas {
             display: block;
         }
-        #inputViz {
-            width: 400px;
-            height: 400px;
+        #camera-views,
+        .view-container {
+            position: relative;
+            display: inline-block;
+        }
+        .view-container .overlay {
+            position: absolute;
+            width: 200px;
+            height: 200px;
+            top: 0;
+            left: 0
+        }
+        .view-container.inactive {
+            --size-percentage: 25%;
+            position: absolute;
+            left: calc((100% - var(--size-percentage)) / 2);
+            bottom: calc((100% - var(--size-percentage)) / 2);
+            transform: scale(var(--size-percentage));
+            border: 1px solid black;
+        }
+        #control-pane {
+
         }
     </style>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/uplot@1.6.25/dist/uPlot.min.css" integrity="sha256-32MMao1vjur/JktQ9zzlsRT2Rv/ZoLt08EmwoAE1+gQ=" crossorigin="anonymous">
 </head>
 <body>
-
-
-    <div>
-        <div id="configuration"></div>
-        <div id="plot"></div>
-        <div id="inputViz"></div>
-        <div>
-            <canvas id="view0"></canvas>
+    <section id="interface">
+        <div id="control-pane">
+            <div id="configuration"></div>
+            <div id="plot"></div>
         </div>
+        <div id="camera-views">
+            <div class="view-container" id="view0">
+                <canvas class="overlay"></canvas>
+                <canvas class="view"></canvas>
+            </div>
 
-        <div>
-            <canvas id="view1"></canvas>
+            <div class="view-container inactive" id="view1">
+                <canvas class="overlay"></canvas>
+                <canvas class="view"></canvas>
+            </div>
         </div>
-
-        <div>
-            <canvas id="view2"></canvas>
-        </div>
-    </div>
+    </section>
 
     
 </body>
@@ -56,17 +81,21 @@
     import { rotateTwist } from '../dist/linAlg.js';
     import { TwistViz} from '../dist/TwistViz.js';
     import { Robot, subscribeToCameraTopic } from "./main_robot.js";
-    import uPlot from 'uplot'
     import {Pane} from 'tweakpane';
     import * as THREE from 'three'
 
+    let ros = null
+    let robot = null
     let threeDMouse = null
     let filter = new SmoothingDeadbandFilter({smoothing: 0.5, deadband: 0.1})
-    let twistViz = null;
+    let twistVizOverlays = null;
     let pane = null
-    const configurationParams = {
+
+    const status = {
         message: "",
         rosStatus: false,
+    }
+    const configurationParams = {
         smoothing: .9,
         softmaxWeight: 50,
         deadbandWeight: .4,
@@ -74,46 +103,55 @@
         rotationEnabled: true,
         deadbandSize: .01,
     };
-    let currentMapping = 1
-    let connectButton
+    const lastValue = {
+        x: 0,
+        y: 0,
+        z: 0,
+        r: 0,
+        p: 0,
+        ya: 0,
+        buttonsValue: 0,
+        t: 0,
+        xyz: {x: 0, y: 0, z: 0},
+        rpy: {x: 0, y: 0, z: 0}
+    }
+    let currentMapping = 0
     let cameraMappings = [
-        [new THREE.Matrix3(
-            0, -1, 0,
-            1, 0, 0,
-            0, 0, 1
+        {
+            topic: '/camera0/image_raw',
+            axes: new THREE.Matrix3(
+                0, -1, 0,
+                1, 0, 0,
+                0, 0, 1
             ),
-            'base_link',
-            new THREE.Matrix4(
+            control_frame: 'base_link',
+            camera_pose: new THREE.Matrix4(
                 1, 0, 0, 0,
                 0, 1, 0, -5,
                 0, 0, 1, 2,
                 0, 0, 0, 1),
-        ],
-        [new THREE.Matrix3(
-            0, 1, 0,
-            -1, 0, 0,
-            0, 0, 1
-        ),
-            'base_link',
-            new THREE.Matrix4(
+        },
+        {
+            topic: '/camera1/image_raw',
+            axes: new THREE.Matrix3(
+                0, 1, 0,
+                -1, 0, 0,
+                0, 0, 1
+            ),
+            control_frame: 'base_link',
+            camera_pose: new THREE.Matrix4(
                 1, 0, 0, 0,
                 0, 1, 0, -.0001,
                 0, 0, 1, 5,
-                0, 0, 0, 1),
-        ],
-        new THREE.Matrix3(
-            1, 0, 0,
-            0, 1, 0,
-            0, 0, 1
-        )]
-
-
+                0, 0, 0, 1)
+        }
+    ]
 
     window.addEventListener('DOMContentLoaded', (event) => {
         pane = new Pane({container: document.getElementById("configuration")});
-        connectButton = pane.addButton({title: "Connect 3D Mouse", disabled: true})
-        pane.addBinding(configurationParams, 'message', {readonly: true, multiline: true, bufferSize: 5})
-        pane.addBinding(configurationParams, 'rosStatus', {readOnly: true})
+        let connectButton = pane.addButton({title: "Connect 3D Mouse", disabled: true})
+        pane.addBinding(status, 'message', {readonly: true, multiline: true, bufferSize: 5})
+        pane.addBinding(status, 'rosStatus', {readonly: true})
         const f = pane.addFolder({
             title: 'Filtering',
             disabled: true
@@ -142,10 +180,31 @@
         ).on("change", e => {
             filter.cubicDeadbandWeight = e.value
         })
+        const g = pane.addFolder({
+            title: 'Graphs',
+            disabled: true,
+            expanded: false
+        });
+        const GRAPH_OPTIONS = {
+            readonly: true,
+            view: 'graph',
+            min: -1,
+            max: +1,
+            interval: 10,
+        }
+        for (let key of ["x", "y", "z", "r", "p", "ya"]) {
+            g.addBinding(lastValue, key, GRAPH_OPTIONS)
+        }
+        const v = pane.addFolder({
+            title: 'Values',
+            disabled: true
+        });
+        v.addBinding(lastValue, "xyz", {readonly: false})
+        v.addBinding(lastValue, "rpy", {readonly: false})
+        v.addBinding(lastValue, 'buttonsValue', {readonly: true})
+        v.addBinding(lastValue, 't', {readonly: true})
 
-
-        let ros = initializeRos()
-        let robot = new Robot(ros)
+        // Check if WebHID is available before going further.
         if (navigator.hid) {
             configurationParams["message"] = "";
             connectButton.disabled = false
@@ -161,151 +220,89 @@
                 if (!device) {
                     return
                 }
-                twistViz = new TwistViz(document.getElementById("inputViz"));
-                twistViz.begin()
+                initializeRos().then(rosConnection => {
+                    ros = rosConnection
+                    robot = new Robot(ros)
+                    twistVizOverlays = []
+                    for (let i = 0; i < cameraMappings.length; i += 1) {
+                        let {topic: topic, axes: axes, control_frame: controlFrame, camera_pose: cameraPose} = cameraMappings[i]
+                        let viewContainer = document.querySelector(`#view${i}`)
+                        const newOverlay = configureVideoView(viewContainer, ros, topic, null, cameraPose)
+                        newOverlay.begin()
+                        twistVizOverlays.push(newOverlay)
+                    }
+                }).catch(error => {
+                    configurationParams["message"] = "ROS connection error"
+                })
+
                 window.addEventListener("3dmouseinput", event => {
                     let values = event.detail.filteredInput
-                    let [frameRotation, controlFrame, cameraPose] = cameraMappings[currentMapping]
-                    let rotated = rotateTwist(values, frameRotation)
-                    twistViz.configureForView(null, cameraPose)
-                    twistViz.setTwist(values, controlFrame);
-                    robot.move(rotated);
+                    if (twistVizOverlays) {
+                        let {axes: axes} = cameraMappings[currentMapping]
+                        for (let i = 0; i < cameraMappings.length; i += 1) {
+                            let rotated = rotateTwist(values, axes)
+                            twistVizOverlays[i].setTwist(values);
+                            if (currentMapping === i) {
+                                robot.move(rotated);
+                            }
+                        }
+                    }
+                    lastValue["x"] = values[0][0]
+                    lastValue["y"] = values[0][1]
+                    lastValue["z"] = values[0][2]
+                    lastValue["xyz"] = {x: lastValue["x"], y: lastValue["y"], z: lastValue["z"]},
+                    lastValue["r"] = values[1][0]
+                    lastValue["p"] = values[1][1]
+                    lastValue["ya"] = values[1][2]
+                    lastValue["rpy"] = {x: lastValue["r"], y: lastValue["p"], z: lastValue["ya"]},
+                    lastValue["buttonsValue"] = event.detail.buttons
+                    lastValue["t"] = event.detail.time
+                    v.refresh()
                 });
+                window.addEventListener("3dmousedisconnected", event => {
+                    threeDMouse = null
+                    connectButton.disabled = false
+                    twistVizOverlays.forEach(overlay => overlay.stop())
+                    f.disabled = true
+                    v.disabled = true
+                    g.disabled = true
+                })
 
                 threeDMouse = device
                 connectButton.disabled = true
                 f.disabled = false
+                v.disabled = false
+                g.disabled = false
             }).catch(error => {
                 configurationParams["message"] = error
                 pane.refresh()
             })
         );
-        subscribeToCameraTopic(ros, '/camera0/image_raw', document.getElementById('view0'));
-        subscribeToCameraTopic(ros, '/camera1/image_raw', document.getElementById('view1'));
-        subscribeToCameraTopic(ros, '/camera2/image_raw', document.getElementById('view2'));
 
     });
 
-    function makePlot(container, data) {
-        let fmtVal = (u, raw, sidx, didx) => {
-				if (didx == null) {
-					let d = u.data[sidx];
-					return `${d[d.length - 1].toFixed(2)}`;
-				}
-
-				return raw == null ? '' : raw;
-			};
-        const opts = {
-            title: "",
-            width: 800,
-            height: 200,
-            cursor: {
-						drag: {
-							setScale: false,
-						}
-					},
-					select: {
-						show: false,
-					},
-            scales: {
-                "x": {
-                    time: false
-                },
-                "%": {
-                    auto: false,
-                    range: [-1, 1],
-                }
-            },
-            series: [
-                {},
-                {
-                    label: "X",
-                    scale: "%",
-                    stroke: "red",
-                    value: fmtVal
-                },
-                {
-                    label: "Y",
-                    scale: "%",
-                    stroke: "green",
-                    value: fmtVal
-                },
-                {
-                    label: "Z",
-                    scale: "%",
-                    stroke: "blue",
-                    value: fmtVal
-                },
-                {
-                    label: "R",
-                    scale: "%",
-                    stroke: "cyan",
-                    value: fmtVal
-                },
-                {
-                    label: "P",
-                    scale: "%",
-                    stroke: "yellow",
-                    value: fmtVal
-                },
-                {
-                    label: "Y",
-                    scale: "%",
-                    stroke: "magenta",
-                    value: fmtVal
-                },
-            ],
-            axes: [
-                { show: false},
-                {
-                    scale: '%',
-                    values: (u, vals, space) => vals.map(v => +v.toFixed(1)),
-                }
-            ]
-        };
-
-        return new uPlot(opts, data, container);
+    function configureVideoView(container, ros, topic, targetPose, cameraPose) {
+        let viewContainer = container.querySelector(".view")
+        let overlayContainer = container.querySelector("canvas")
+        subscribeToCameraTopic(ros, topic, viewContainer);
+        let overlay = new TwistViz({container: container, canvas: overlayContainer, target_pose: targetPose, camera_pose: cameraPose})
+        return overlay
     }
-
-    let data = [[...Array(600).keys()]]
-    for (let i = 1; i < 7; i++) {
-        data.push(new Array(600).fill(0))
-    }
-    let i = 600;
-    let plot = makePlot(document.getElementById("plot"), data);
-    window.addEventListener("3dmouseinput", event => {
-        data.forEach((d, i) => {
-            d.shift()
-        })
-        const [linear, angular] = event.detail.filteredInput
-        data[0].push(i)
-        data[1].push(linear[0])
-        data[2].push(linear[1])
-        data[3].push(linear[2])
-        data[4].push(angular[0])
-        data[5].push(angular[1])
-        data[6].push(angular[2])
-        plot.setData(data)
-        i+= 1
-    })
 
     function initializeRos(){
-        let ros = new ROSLIB.Ros({
-            url: 'ws://127.0.0.1:9090'
-          });
+        return new Promise((resolve, reject) => {
+            let ros = new ROSLIB.Ros({
+                url: 'ws://127.0.0.1:9090'
+            })
 
-          ros.on('connection', () => {
-            configurationParams.rosStatus = true
-          });
+            ros.on('connection', () => {
+                resolve(ros)
+            })
 
-          ros.on('error', (error) => {
-            configurationParams.message = "ROS connection failed";
-          });
-
-          ros.on('close', () => {
-            configurationParams.rosStatus = false
-          });
-        return ros
+            ros.on('error', (error) => {
+                reject(error)
+            })
+        })
     }
 
 </script>

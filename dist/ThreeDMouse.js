@@ -76,8 +76,8 @@ export class ThreeDMouse {
         this.dataSpecs = dataSpecs
         this.filter = filter
         this.device.addEventListener("inputreport", this.handleInputReport.bind(this));
-        navigator.hid.addEventListener("connect", this.handleConnectedDevice);
-        navigator.hid.addEventListener("disconnect", this.handleDisconnectedDevice);
+        navigator.hid.addEventListener("connect", this.handleConnectedDevice.bind(this));
+        navigator.hid.addEventListener("disconnect", this.handleDisconnectedDevice.bind(this));
         // Leaving t as a sentinel value to make sure we don't fire a misleading empty event
         // when using `emitRepeatedEvents`.
         this._workingState =  {
@@ -93,29 +93,59 @@ export class ThreeDMouse {
             "buttonsChanged": false,
             "controlChangeCount": 0,
         }
+        this._emitRepeatedEventsInterval = null
+        this._lastEmittedTime = Date.now() / 1000;
         // The device is connected at this point, so start the repeat event timer
         // if the user requested it
         this.emitRepeatedEvents = emitRepeatedEvents
-        this._lastEmittedTime = Date.now() / 1000;
-        this._emitRepeatedEventsInterval = null
     }
 
     handleConnectedDevice(e) {
-        // Kicking the interval
+        // Rerun the setter to get the interval running
         this._emitRepeatedEvents = this._emitRepeatedEvents
-        console.log(`Device ${e.device.productName} is connected.`);
+        const event = new CustomEvent('3dmouseconnected', {
+            bubbles: true,
+            cancelable: true,
+            detail: {
+                mouse: this,
+                hidEvent: e
+            }
+        });
+        window.dispatchEvent(event)
     }
+
+    /**
+     * We redispatch the WebHID disconnected event so we can include a
+     * reference to the owning ThreeDMouse instance.
+     * @param e
+     */
     handleDisconnectedDevice(e) {
-        if (this._emitRepeatedEventsInterval) window.clearInterval(this._emitRepeatedEventsInterval)
-        console.log(`Device ${e.device.productName} is disconnected.`);
+        if (this._emitRepeatedEventsInterval) {
+            window.clearInterval(this._emitRepeatedEventsInterval)
+            this._emitRepeatedEventsInterval = null
+        }
+        const event = new CustomEvent('3dmousedisconnected', {
+            bubbles: true,
+            cancelable: true,
+            detail: {
+                mouse: this,
+                hidEvent: e
+            }
+        });
+        window.dispatchEvent(event)
     }
 
     set emitRepeatedEvents(value) {
+        if (this._emitRepeatedEventsInterval === value) {
+            // Idempotent
+            return
+        }
         this._emitRepeatedEvents = value
         if (this._emitRepeatedEvents) {
-            this._emitRepeatedEventsInterval = setInterval(this._emitRepeatedEvent.bind(this), 1);
+            this._emitRepeatedEventsInterval = window.setInterval(this._emitRepeatedEvent.bind(this), 1)
         } else {
             window.clearInterval(this._emitRepeatedEventsInterval)
+            this._emitRepeatedEventsInterval = null
         }
     }
 
@@ -200,6 +230,7 @@ export class ThreeDMouse {
                 input: [transIn, rotIn],
                 filteredInput: filtered,
                 buttons: state["buttons"],
+                time: this._workingState["t"]
             }
         });
     }

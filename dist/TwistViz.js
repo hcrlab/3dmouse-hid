@@ -5,7 +5,7 @@ import {ensureVector3, integrateTwistStepwise} from "./linAlg.js";
 
 export class TwistViz {
 
-    constructor(container) {
+    constructor({container: container, canvas: canvas, target_pose: targetPose, camera_pose: cameraPose}) {
         this.container = container
         this.scene = new THREE.Scene();
         this.anchorMarker = new Axes({size: .5, thickness: 0.025, opacity: 0.25});
@@ -24,25 +24,32 @@ export class TwistViz {
 
         this.camera = new THREE.PerspectiveCamera(50, container.innerWidth / container.innerHeight, 0.6, 1000);
         this.camera.up.set(0,0,1)
-        this.renderer = new THREE.WebGLRenderer({antialias: true, alpha: true});
+        this.configureForView(targetPose, cameraPose)
+        this.renderer = new THREE.WebGLRenderer({antialias: true, alpha: true, canvas: canvas});
         this.renderer.setClearColor("#FFFFFF", 0)
-        container.appendChild(this.renderer.domElement)
         this.renderer.setSize(container.clientWidth, container.clientHeight);
-        const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
-        const directionalLight = new THREE.DirectionalLight( 0xffffff, 1.5);
-        directionalLight.position.x = -2
-        directionalLight.position.y = -2
-        directionalLight.position.z = 2
+        {
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
+            const directionalLight = new THREE.DirectionalLight(0xffffff, 1.5);
+            directionalLight.position.x = -2
+            directionalLight.position.y = -2
+            directionalLight.position.z = 2
 
-        this.scene.add(ambientLight);
-        this.scene.add(directionalLight)
+            this.scene.add(ambientLight);
+            this.scene.add(directionalLight)
+        }
+        {
+            const color = 0xFFFFFF
+            const near = 3
+            const far = 8
+            this.scene.fog = new THREE.Fog(color, near, far);
+        }
 
         this._resizeObserver = new ResizeObserver(this._elementResized.bind(this)).observe(container);
 
     }
 
     begin() {
-        this.setCameraToInitialState();
         this.reset();
         this._render();
     }
