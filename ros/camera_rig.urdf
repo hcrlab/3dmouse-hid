@@ -64,12 +64,12 @@
   <!-- Gazebo camera plugins -->
   <gazebo reference="camera0_link">
     <sensor type="camera" name="camera0">
-      <update_rate>50.0</update_rate>
-      <camera name="head">
+      <update_rate>24.0</update_rate>
+      <camera name="camera0">
         <horizontal_fov>1.3962634</horizontal_fov>
         <image>
-          <width>600</width>
-          <height>500</height>
+          <width>640</width>
+          <height>480</height>
           <format>R8G8B8</format>
         </image>
         <clip>
@@ -101,12 +101,12 @@
 
   <gazebo reference="camera1_link">
     <sensor type="camera" name="camera1">
-      <update_rate>30.0</update_rate>
-      <camera name="head">
+      <update_rate>24.0</update_rate>
+      <camera name="camera1">
         <horizontal_fov>1.3962634</horizontal_fov>
         <image>
-          <width>600</width>
-          <height>500</height>
+          <width>640</width>
+          <height>480</height>
           <format>R8G8B8</format>
         </image>
         <clip>
@@ -121,7 +121,7 @@
       </camera>
       <plugin name="camera1_controller" filename="libgazebo_ros_camera.so">
         <alwaysOn>true</alwaysOn>
-        <updateRate>50</updateRate>
+        <updateRate>24</updateRate>
         <cameraName>camera1</cameraName>
         <imageTopicName>image_raw</imageTopicName>
         <cameraInfoTopicName>camera_info</cameraInfoTopicName>
@@ -138,12 +138,12 @@
 
   <gazebo reference="camera2_link">
     <sensor type="camera" name="camera2">
-      <update_rate>50</update_rate>
-      <camera name="head">
+      <update_rate>24</update_rate>
+      <camera name="camera2">
         <horizontal_fov>1.3962634</horizontal_fov>
         <image>
-          <width>600</width>
-          <height>500</height>
+          <width>640</width>
+          <height>480</height>
           <format>R8G8B8</format>
         </image>
         <clip>
@@ -158,7 +158,7 @@
       </camera>
       <plugin name="camera2_controller" filename="libgazebo_ros_camera.so">
         <alwaysOn>true</alwaysOn>
-        <updateRate>50</updateRate>
+        <updateRate>24</updateRate>
         <cameraName>camera2</cameraName>
         <imageTopicName>image_raw</imageTopicName>
         <cameraInfoTopicName>camera_info</cameraInfoTopicName>
