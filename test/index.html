@@ -14,13 +14,13 @@
           }
         }
     </script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.1/js/bootstrap.bundle.min.js" integrity="sha512-ToL6UYWePxjhDQKNioSi4AyJ5KkRxY+F1+Fi7Jgh0Hp5Kk2/s8FD7zusJDdonfe5B00Qw+B8taXxF6CFLnqNCw==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
     <script type="module" src="https://cdn.jsdelivr.net/npm/roslib@1/build/roslib.min.js"></script>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.1/css/bootstrap.min.css" integrity="sha512-Z/def5z5u2aR89OuzYcxmDJ0Bnd5V1cKqBEbvLOiUNWdg9PQeXVvXLI90SE4QOHGlfLqUnDNVAYyZi8UwUTmWQ==" crossorigin="anonymous" referrerpolicy="no-referrer">
     <style>
         body {
             background-color: #111;
             margin: 1rem;
+            font-family: sans-serif;
+            line-height: 1.5;
         }
         #interface {
             display: inline-flex;
@@ -48,12 +48,22 @@
             bottom: calc((100% - var(--size-percentage)) / 2);
             transform: scale(var(--size-percentage));
             border: 1px solid black;
+            z-index: 99;
         }
         #control-pane {
 
         }
+        #usage-information {
+            background-color: #333;
+            color: #ccc;
+            padding: 0.50rem 1rem;
+            border-radius: 4px;
+        }
+        ul {
+            padding: 0 0 0 .75rem;
+            margin: 0;
+        }
     </style>
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/uplot@1.6.25/dist/uPlot.min.css" integrity="sha256-32MMao1vjur/JktQ9zzlsRT2Rv/ZoLt08EmwoAE1+gQ=" crossorigin="anonymous">
 </head>
 <body>
     <section id="interface">
@@ -62,6 +72,14 @@
             <div id="plot"></div>
         </div>
         <div id="camera-views">
+            <div id="usage-information">
+                <ul>
+                    <li>Follow the readme instructions to launch the simulation</li>
+                    <li>Use the <i>Connect 3D Mouse</i> button to begin</li>
+                    <li>Modify the filtering parameters </li>
+                    <li>Click the <i>Graphs</i> label to view the processed signals</li>
+                </ul>
+            </div>
             <div class="view-container" id="view0">
                 <canvas class="overlay"></canvas>
                 <canvas class="view"></canvas>
@@ -80,7 +98,7 @@
     import { ThreeDMouse, SmoothingDeadbandFilter } from '../dist/ThreeDMouse.js';
     import { rotateTwist } from '../dist/linAlg.js';
     import { TwistViz} from '../dist/TwistViz.js';
-    import { Robot, subscribeToCameraTopic } from "./main_robot.js";
+    import { Robot, subscribeToCameraTopic, initializeRos } from "./robot.js";
     import {Pane} from 'tweakpane';
     import * as THREE from 'three'
 
@@ -90,18 +108,19 @@
     let filter = new SmoothingDeadbandFilter({smoothing: 0.5, deadband: 0.1})
     let twistVizOverlays = null;
     let pane = null
+    let instructionsContainer = null
 
     const status = {
         message: "",
         rosStatus: false,
     }
     const configurationParams = {
-        smoothing: .9,
+        smoothing: .5,
         softmaxWeight: 50,
         deadbandWeight: .4,
         translationEnabled: true,
         rotationEnabled: true,
-        deadbandSize: .01,
+        deadbandSize: .1,
     };
     const lastValue = {
         x: 0,
@@ -148,39 +167,46 @@
     ]
 
     window.addEventListener('DOMContentLoaded', (event) => {
+        instructionsContainer = document.getElementById("usage-information")
         pane = new Pane({container: document.getElementById("configuration")});
-        let connectButton = pane.addButton({title: "Connect 3D Mouse", disabled: true})
+        let connectButton = pane.addButton({title: "Connect 3D Mouse", disabled: false})
         pane.addBinding(status, 'message', {readonly: true, multiline: true, bufferSize: 5})
         pane.addBinding(status, 'rosStatus', {readonly: true})
-        const f = pane.addFolder({
+        const filteringFolder = pane.addFolder({
             title: 'Filtering',
             disabled: true
         });
-        f.addBinding(configurationParams, "translationEnabled").on("change", e => {
+        filteringFolder.addBinding(configurationParams, "translationEnabled").on("change", e => {
             filter.translationMultiplier = e.value ? 1. : 0.;
         })
-        f.addBinding(configurationParams, "rotationEnabled").on("change", e => {
+        filteringFolder.addBinding(configurationParams, "rotationEnabled").on("change", e => {
             filter.rotationMultiplier = e.value ? 1. : 0.;
         })
-        f.addBinding(
+        filteringFolder.addBinding(
+            configurationParams, 'smoothing',
+            {min: 0.00, max: 1.0}
+        ).on("change", e => {
+            filter.smoothing = e.value
+        })
+        filteringFolder.addBinding(
             configurationParams, 'softmaxWeight',
             {min: 0.01, max: 100}
         ).on("change", e => {
             filter.softmaxWeight = e.value
         })
-        f.addBinding(
+        filteringFolder.addBinding(
             configurationParams, 'deadbandSize',
             {min: 0., max:1.0}
         ).on("change", e => {
             filter.deadband = e.value
         })
-        f.addBinding(
+        filteringFolder.addBinding(
             configurationParams, 'deadbandWeight',
             {min: 0, max:10}
         ).on("change", e => {
             filter.cubicDeadbandWeight = e.value
         })
-        const g = pane.addFolder({
+        const graphFolder = pane.addFolder({
             title: 'Graphs',
             disabled: true,
             expanded: false
@@ -191,24 +217,25 @@
             min: -1,
             max: +1,
             interval: 10,
+            bufferSize: 300
         }
         for (let key of ["x", "y", "z", "r", "p", "ya"]) {
-            g.addBinding(lastValue, key, GRAPH_OPTIONS)
+            graphFolder.addBinding(lastValue, key, GRAPH_OPTIONS)
         }
-        const v = pane.addFolder({
+        const valueFolder = pane.addFolder({
             title: 'Values',
             disabled: true
         });
-        v.addBinding(lastValue, "xyz", {readonly: false})
-        v.addBinding(lastValue, "rpy", {readonly: false})
-        v.addBinding(lastValue, 'buttonsValue', {readonly: true})
-        v.addBinding(lastValue, 't', {readonly: true})
+        // Tweakpane doesn't have a readonly binding for Point3 unfortunately
+        valueFolder.addBinding(lastValue, "xyz", {readonly: false})
+        valueFolder.addBinding(lastValue, "rpy", {readonly: false})
+        valueFolder.addBinding(lastValue, 'buttonsValue', {readonly: true})
+        valueFolder.addBinding(lastValue, 't', {readonly: true})
 
         // Check if WebHID is available before going further.
-        if (navigator.hid) {
-            configurationParams["message"] = "";
-            connectButton.disabled = false
-        } else {
+        if (!navigator.hid) {
+            configurationParams["message"] = "WebHID is not available. Are you using Chrome or Edge? Are you running from localhost or HTTPS?";
+            connectButton.disabled = true
             return
         }
 
@@ -222,6 +249,12 @@
                 }
                 initializeRos().then(rosConnection => {
                     ros = rosConnection
+                    instructionsContainer.style.display = "none"
+                    status["rosStatus"] = true
+                    ros.on("error", e => {
+                        status["rosStatus"] = false
+                        status["message"] = "ROS connection error"
+                    })
                     robot = new Robot(ros)
                     twistVizOverlays = []
                     for (let i = 0; i < cameraMappings.length; i += 1) {
@@ -232,47 +265,51 @@
                         twistVizOverlays.push(newOverlay)
                     }
                 }).catch(error => {
-                    configurationParams["message"] = "ROS connection error"
+                    status["message"] = error.message
                 })
 
                 window.addEventListener("3dmouseinput", event => {
                     let values = event.detail.filteredInput
                     if (twistVizOverlays) {
-                        let {axes: axes} = cameraMappings[currentMapping]
+                        let {axes: axes, control_frame: controlFrame} = cameraMappings[currentMapping]
                         for (let i = 0; i < cameraMappings.length; i += 1) {
                             let rotated = rotateTwist(values, axes)
                             twistVizOverlays[i].setTwist(values);
                             if (currentMapping === i) {
-                                robot.move(rotated);
+                                robot.move(rotated, controlFrame, event.detail.time);
                             }
                         }
                     }
                     lastValue["x"] = values[0][0]
                     lastValue["y"] = values[0][1]
                     lastValue["z"] = values[0][2]
-                    lastValue["xyz"] = {x: lastValue["x"], y: lastValue["y"], z: lastValue["z"]},
+                    lastValue["xyz"] = {x: lastValue["x"], y: lastValue["y"], z: lastValue["z"]}
                     lastValue["r"] = values[1][0]
                     lastValue["p"] = values[1][1]
                     lastValue["ya"] = values[1][2]
-                    lastValue["rpy"] = {x: lastValue["r"], y: lastValue["p"], z: lastValue["ya"]},
-                    lastValue["buttonsValue"] = event.detail.buttons
+                    lastValue["rpy"] = {x: lastValue["r"], y: lastValue["p"], z: lastValue["ya"]}
+                    lastValue["buttonsValue"] = event.detail.buttonsValue
                     lastValue["t"] = event.detail.time
-                    v.refresh()
+                    valueFolder.refresh()
+                    if (lastValue["buttonsValue"]) {
+                        currentMapping = (currentMapping + 1) % cameraMappings.length
+                        changeActiveVideoView(currentMapping)
+                    }
                 });
                 window.addEventListener("3dmousedisconnected", event => {
                     threeDMouse = null
                     connectButton.disabled = false
                     twistVizOverlays.forEach(overlay => overlay.stop())
-                    f.disabled = true
-                    v.disabled = true
-                    g.disabled = true
+                    filteringFolder.disabled = true
+                    valueFolder.disabled = true
+                    graphFolder.disabled = true
                 })
 
                 threeDMouse = device
                 connectButton.disabled = true
-                f.disabled = false
-                v.disabled = false
-                g.disabled = false
+                filteringFolder.disabled = false
+                valueFolder.disabled = false
+                graphFolder.disabled = false
             }).catch(error => {
                 configurationParams["message"] = error
                 pane.refresh()
@@ -289,20 +326,16 @@
         return overlay
     }
 
-    function initializeRos(){
-        return new Promise((resolve, reject) => {
-            let ros = new ROSLIB.Ros({
-                url: 'ws://127.0.0.1:9090'
-            })
+    function changeActiveVideoView(makeActiveIndex) {
+        let views = document.getElementsByClassName("view-container")
+        for (let i = 0; i < views.length; i++) {
+            if (i !== makeActiveIndex) {
+                views[i].classList.add("inactive")
+            } else {
+                views[i].classList.remove("inactive")
+            }
+        }
 
-            ros.on('connection', () => {
-                resolve(ros)
-            })
-
-            ros.on('error', (error) => {
-                reject(error)
-            })
-        })
     }
 
 </script>

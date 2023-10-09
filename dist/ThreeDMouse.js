@@ -88,13 +88,13 @@ export class ThreeDMouse {
             "r": 0.,
             "p": 0.,
             "ya": 0.,
-            "buttonStates": {},
+            "buttonsState": {},
             "buttonsValue": 0,
             "buttonsChanged": false,
             "controlChangeCount": 0,
         }
         this._emitRepeatedEventsInterval = null
-        this._lastEmittedTime = Date.now() / 1000;
+        this._lastEmittedTime = Date.now();
         // The device is connected at this point, so start the repeat event timer
         // if the user requested it
         this.emitRepeatedEvents = emitRepeatedEvents
@@ -150,8 +150,8 @@ export class ThreeDMouse {
     }
 
     _emitRepeatedEvent() {
-        const currentTime = Date.now() / 1000;
-        if (currentTime - this._lastEmittedTime > .007) {
+        const currentTime = Date.now();
+        if (currentTime - this._lastEmittedTime > 7) {
             this._workingState["t"] = currentTime
             window.dispatchEvent(this._makeEventFromState(this._workingState));
             this._lastEmittedTime = this._workingState["t"]
@@ -194,28 +194,35 @@ export class ThreeDMouse {
             }
             }
         }
-        
+
+        let newButtonsValue = null
         for (let button_index = 0; button_index < this.dataSpecs.buttonMapping.length; button_index++) {
             const {name: name, channel: chan, byte: byte, bit: bit} = this.dataSpecs.buttonMapping[button_index];
             if (e.reportId === chan) {
                 this._workingState["buttonsChanged"] = true;
+                if (newButtonsValue === null) {
+                    newButtonsValue = 0
+                }
                 // update the button vector
                 const mask = 1 << bit;
-                this._workingState["buttonStates"][name] = (data.getUint8(byte) & mask) !== 0 ? 1 : 0;
-                this._workingState["buttonsValue"] |= mask
+                const state = data.getUint8(byte) & mask
+                this._workingState["buttonsState"][name] = state !== 0;
+                newButtonsValue |= state << (8 * byte)
             }
         }
             
         if (this._workingState["controlChangeCount"] <= 1 && !this._workingState["buttonsChanged"]) {
             return;
         }
-        this._workingState["t"] = Date.now() / 1000;
+        if (newButtonsValue !== null) {
+            this._workingState["buttonsValue"] = newButtonsValue
+        }
+        this._workingState["t"] = Date.now();
 
         const outEvent = this._makeEventFromState(this._workingState)
         window.dispatchEvent(outEvent);
         this._lastEmittedTime = this._workingState["t"]
         this._workingState["controlChangeCount"] = 0;
-        this._workingState["buttonsValue"] = 0
         
     }
 
@@ -229,7 +236,8 @@ export class ThreeDMouse {
             detail: {
                 input: [transIn, rotIn],
                 filteredInput: filtered,
-                buttons: state["buttons"],
+                buttons: state["buttonsState"],
+                buttonsValue: state["buttonsValue"],
                 time: this._workingState["t"]
             }
         });

@@ -10,7 +10,7 @@ export class Robot {
     });
   }
 
-  move(twist, frame="base_link") {
+  move(twist, frame="base_link", time=null) {
     let [linear, angular] = [ensureVector3(twist[0]), ensureVector3(twist[1])]
     let linearValues = {
       x: linear.x,
@@ -31,10 +31,13 @@ export class Robot {
       }
     });
 
+    if (!time) {
+        time = Date.now()
+    }
     twistMsg.header = new ROSLIB.Message({
         stamp: {
-            sec: Math.floor(Date.now() / 1000),
-            nanosec: (Date.now() % 1000) * 1e6
+            sec: Math.floor(time / 1000),
+            nanosec: (time % 1000) * 1e6
         },
         frame_id: frame
     });
@@ -60,6 +63,22 @@ export class Robot {
       this.closeGripper();
     }
   }
+}
+
+export function initializeRos(){
+    return new Promise((resolve, reject) => {
+        let ros = new ROSLIB.Ros({
+            url: 'ws://127.0.0.1:9090'
+        })
+
+        ros.on('connection', () => {
+            resolve(ros)
+        })
+
+        ros.on('error', (error) => {
+            reject(error)
+        })
+    })
 }
 
 
