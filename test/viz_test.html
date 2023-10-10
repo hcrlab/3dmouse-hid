@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang=”en”>
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
+    <!-- See threejs usage documentation: https://threejs.org/docs/#manual/en/introduction/Installation -->
+    <script type="importmap">
+        {
+          "imports": {
+            "three": "https://unpkg.com/three@0.156.1/build/three.module.js",
+            "three/addons/": "https://unpkg.com/three@0.156.1/examples/jsm/",
+            "tweakpane": "https://cdn.jsdelivr.net/npm/tweakpane@4.0.1/dist/tweakpane.min.js"
+          }
+        }
+    </script>
+    <script type="module" src="https://cdn.jsdelivr.net/npm/roslib@1/build/roslib.min.js"></script>
+    <style>
+        body {
+            background-color: white;
+            margin: 1rem;
+            font-family: sans-serif;
+            line-height: 1.5;
+        }
+        #interface {
+            display: flex;
+            gap: .5rem
+        }
+        canvas {
+            display: block;
+        }
+        #views {
+            flex: 1;
+        }
+        #view {
+            max-height: 100vh;
+            height: 100%;
+        }
+        #usage-information {
+            background-color: #333;
+            color: #ccc;
+            padding: 0.50rem 1rem;
+            margin-top: .5rem;
+            border-radius: 4px;
+        }
+        ul {
+            padding: 0 0 0 .75rem;
+            margin: 0;
+        }
+    </style>
+</head>
+<body>
+<section id="interface">
+    <div id="control-pane">
+        <div id="configuration"></div>
+        <div id="usage-information">
+            <ul>
+                <li>Enter numbers in the "Values" section to update the visualization manually</li>
+                <li>Use the <i>Connect 3D Mouse</i> button to read values from the device</li>
+                <li>Modify the filtering parameters</li>
+                <li>Click the <i>Graphs</i> label to view the processed signals</li>
+            </ul>
+        </div>
+    </div>
+    <div id="views">
+        <div class="view-container" id="view">
+            <canvas id="twist-viz"></canvas>
+        </div>
+
+    </div>
+</section>
+
+
+</body>
+<script type="module">
+    import { ThreeDMouse, SmoothingDeadbandFilter } from '../dist/ThreeDMouse.js';
+    import { TwistViz} from '../dist/TwistViz.js';
+    import * as THREE from 'three'
+    import {createConfigurationPane, updateLastValues} from "./configurationPane.js";
+
+    let pane = null
+    let threeDMouse = null
+    let filter = new SmoothingDeadbandFilter({smoothing: 0.5, deadband: 0.1})
+    let twistViz = null;
+    const status = {
+        message: "",
+    }
+    const filterParams = {
+        smoothing: .5,
+        softmaxWeight: 50,
+        deadbandWeight: .4,
+        translationEnabled: true,
+        rotationEnabled: true,
+        deadbandSize: .1,
+    };
+    const lastValue = {
+        x: 0,
+        y: 0,
+        z: 0,
+        r: 0,
+        p: 0,
+        ya: 0,
+        buttonsValue: 0,
+        t: 0,
+        xyz: {x: 0, y: 0, z: 0},
+        rpy: {x: 0, y: 0, z: 0}
+    }
+    const cameraMapping =
+        {
+            axes: new THREE.Matrix3(
+                0, -1, 0,
+                1, 0, 0,
+                0, 0, 1
+            ),
+            camera_pose: new THREE.Matrix4(
+                1, 0, 0, 0,
+                0, 1, 0, -5,
+                0, 0, 1, 2,
+                0, 0, 0, 1),
+        }
+
+
+    window.addEventListener('DOMContentLoaded', _ => {
+        let viewContainer = document.querySelector(`#view`)
+        let vizCanvas = document.querySelector(`#twist-viz`)
+        twistViz = new TwistViz({container: viewContainer, canvas: vizCanvas, camera_pose: cameraMapping.camera_pose})
+        twistViz.begin()
+
+        let ui = createConfigurationPane({container: document.getElementById("configuration"), status: status, filter: filter, filterParams: filterParams, lastValue: lastValue})
+        pane = ui["pane"]
+        let connectButton = ui["connectButton"]
+        let uiFolders = ui["folders"]
+        uiFolders["values"].disabled = false
+
+        let updateViz = e => {
+            const [xyz, rpy] = [lastValue.xyz, lastValue.rpy]
+            twistViz.setTwist([[xyz.x, xyz.y, xyz.z], [rpy.x, rpy.y, rpy.z]])
+        }
+        ui["input"]["xyz"].on("change", updateViz)
+        ui["input"]["rpy"].on("change", updateViz)
+
+        if (!navigator.hid) {
+            configurationParams["message"] = "WebHID is not available. Are you using Chrome or Edge? Are you running from localhost or HTTPS?";
+            connectButton.disabled = true
+            return
+        }
+        connectButton.on('click', () =>
+            ThreeDMouse.requestDevice(
+                {emitRepeatedEvents: false,
+                    filter: filter}
+            ).then(device => {
+                if (!device) {
+                    return
+                }
+                instructionsContainer.style.display = "none"
+
+                window.addEventListener("3dmouseinput", event => {
+                    let values = event.detail.filteredInput
+                    if (twistViz) {
+                        twistViz.setTwist(values);
+                    }
+                    updateLastValues(event, lastValue)
+                    uiFolders["values"].refresh()
+                });
+                window.addEventListener("3dmousedisconnected", event => {
+                    threeDMouse = null
+                    connectButton.disabled = false
+                    twistViz.stop()
+                    uiFolders["filtering"].disabled = true
+                    uiFolders["graphs"].disabled = true
+                })
+
+                threeDMouse = device
+                uiFolders["filtering"].disabled = true
+                uiFolders["graphs"].disabled = false
+            }).catch(error => {
+                status["message"] = error
+                pane.refresh()
+            })
+        );
+
+    });
+</script>
+</html>
+

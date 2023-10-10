@@ -99,8 +99,8 @@
     import { rotateTwist } from '../dist/linAlg.js';
     import { TwistViz} from '../dist/TwistViz.js';
     import { Robot, subscribeToCameraTopic, initializeRos } from "./robot.js";
-    import {Pane} from 'tweakpane';
     import * as THREE from 'three'
+    import {createConfigurationPane, updateLastValues} from "./configurationPane.js";
 
     let ros = null
     let robot = null
@@ -108,13 +108,14 @@
     let filter = new SmoothingDeadbandFilter({smoothing: 0.5, deadband: 0.1})
     let twistVizOverlays = null;
     let pane = null
+    let uiFolders = null
     let instructionsContainer = null
 
     const status = {
         message: "",
         rosStatus: false,
     }
-    const configurationParams = {
+    const filterParams = {
         smoothing: .5,
         softmaxWeight: 50,
         deadbandWeight: .4,
@@ -166,75 +167,16 @@
         }
     ]
 
-    window.addEventListener('DOMContentLoaded', (event) => {
+    window.addEventListener('DOMContentLoaded', _ => {
         instructionsContainer = document.getElementById("usage-information")
-        pane = new Pane({container: document.getElementById("configuration")});
-        let connectButton = pane.addButton({title: "Connect 3D Mouse", disabled: false})
-        pane.addBinding(status, 'message', {readonly: true, multiline: true, bufferSize: 5})
-        pane.addBinding(status, 'rosStatus', {readonly: true})
-        const filteringFolder = pane.addFolder({
-            title: 'Filtering',
-            disabled: true
-        });
-        filteringFolder.addBinding(configurationParams, "translationEnabled").on("change", e => {
-            filter.translationMultiplier = e.value ? 1. : 0.;
-        })
-        filteringFolder.addBinding(configurationParams, "rotationEnabled").on("change", e => {
-            filter.rotationMultiplier = e.value ? 1. : 0.;
-        })
-        filteringFolder.addBinding(
-            configurationParams, 'smoothing',
-            {min: 0.00, max: 1.0}
-        ).on("change", e => {
-            filter.smoothing = e.value
-        })
-        filteringFolder.addBinding(
-            configurationParams, 'softmaxWeight',
-            {min: 0.01, max: 100}
-        ).on("change", e => {
-            filter.softmaxWeight = e.value
-        })
-        filteringFolder.addBinding(
-            configurationParams, 'deadbandSize',
-            {min: 0., max:1.0}
-        ).on("change", e => {
-            filter.deadband = e.value
-        })
-        filteringFolder.addBinding(
-            configurationParams, 'deadbandWeight',
-            {min: 0, max:10}
-        ).on("change", e => {
-            filter.cubicDeadbandWeight = e.value
-        })
-        const graphFolder = pane.addFolder({
-            title: 'Graphs',
-            disabled: true,
-            expanded: false
-        });
-        const GRAPH_OPTIONS = {
-            readonly: true,
-            view: 'graph',
-            min: -1,
-            max: +1,
-            interval: 10,
-            bufferSize: 300
-        }
-        for (let key of ["x", "y", "z", "r", "p", "ya"]) {
-            graphFolder.addBinding(lastValue, key, GRAPH_OPTIONS)
-        }
-        const valueFolder = pane.addFolder({
-            title: 'Values',
-            disabled: true
-        });
-        // Tweakpane doesn't have a readonly binding for Point3 unfortunately
-        valueFolder.addBinding(lastValue, "xyz", {readonly: false})
-        valueFolder.addBinding(lastValue, "rpy", {readonly: false})
-        valueFolder.addBinding(lastValue, 'buttonsValue', {readonly: true})
-        valueFolder.addBinding(lastValue, 't', {readonly: true})
+        let ui = createConfigurationPane({container: document.getElementById("configuration"), status: status, filter: filter, filterParams: filterParams, lastValue: lastValue})
+        pane = ui["pane"]
+        let connectButton = ui["connectButton"]
+        let uiFolders = ui["folders"]
 
         // Check if WebHID is available before going further.
         if (!navigator.hid) {
-            configurationParams["message"] = "WebHID is not available. Are you using Chrome or Edge? Are you running from localhost or HTTPS?";
+            status["message"] = "WebHID is not available. Are you using Chrome or Edge? Are you running from localhost or HTTPS?";
             connectButton.disabled = true
             return
         }
@@ -265,7 +207,7 @@
                         twistVizOverlays.push(newOverlay)
                     }
                 }).catch(error => {
-                    status["message"] = error.message
+                    status["message"] = "Error: ROS webbridge connection failed"
                 })
 
                 window.addEventListener("3dmouseinput", event => {
@@ -280,17 +222,8 @@
                             }
                         }
                     }
-                    lastValue["x"] = values[0][0]
-                    lastValue["y"] = values[0][1]
-                    lastValue["z"] = values[0][2]
-                    lastValue["xyz"] = {x: lastValue["x"], y: lastValue["y"], z: lastValue["z"]}
-                    lastValue["r"] = values[1][0]
-                    lastValue["p"] = values[1][1]
-                    lastValue["ya"] = values[1][2]
-                    lastValue["rpy"] = {x: lastValue["r"], y: lastValue["p"], z: lastValue["ya"]}
-                    lastValue["buttonsValue"] = event.detail.buttonsValue
-                    lastValue["t"] = event.detail.time
-                    valueFolder.refresh()
+                    updateLastValues(event, lastValue)
+                    uiFolders["values"].refresh()
                     if (lastValue["buttonsValue"]) {
                         currentMapping = (currentMapping + 1) % cameraMappings.length
                         changeActiveVideoView(currentMapping)
@@ -300,19 +233,12 @@
                     threeDMouse = null
                     connectButton.disabled = false
                     twistVizOverlays.forEach(overlay => overlay.stop())
-                    filteringFolder.disabled = true
-                    valueFolder.disabled = true
-                    graphFolder.disabled = true
+                    Object.keys(uiFolders).forEach(_, folder => folder.disabled = true)
                 })
 
                 threeDMouse = device
                 connectButton.disabled = true
-                filteringFolder.disabled = false
-                valueFolder.disabled = false
-                graphFolder.disabled = false
-            }).catch(error => {
-                configurationParams["message"] = error
-                pane.refresh()
+                Object.values(uiFolders).forEach((folder, _) => folder.disabled = false)
             })
         );
 
