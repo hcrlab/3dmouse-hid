@@ -22,6 +22,8 @@ class Axes extends Mesh {
      */
 
 
+
+
 	constructor( {size: size = 1 , thickness: thickness= .05, opacity: opacity = 1}) {
 
 		const xGeometry = new THREE.CylinderGeometry(thickness, thickness, size, 32 );
@@ -48,6 +50,7 @@ class Axes extends Mesh {
 		this.geometry.groups[2].materialIndex = 2
 		this.type = 'Axes';
 	}
+	
 	
 	/**
      * Sets the colors of the X, Y, and Z axes. 

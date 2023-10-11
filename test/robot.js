@@ -1,6 +1,18 @@
 import {ensureVector3} from "../dist/linAlg.js";
 
+/**
+ * Represents a Robot interface for ROS.
+ */
+
+
+
 export class Robot {
+
+  /**
+   * Create a Robot instance.
+   * @param {object} ros - The ROSLIB Ros instance to connect to.
+   */
+
   constructor(ros) {
     this.ros = ros
     this.twistTopic = new ROSLIB.Topic({
@@ -9,6 +21,14 @@ export class Robot {
       messageType: 'geometry_msgs/msg/TwistStamped'
     });
   }
+
+  /**
+   * Send a movement command to the robot.
+   * @param {array} twist - An array with linear and angular movement vectors.
+   * @param {string} [frame="base_link"] - The reference frame for the movement.
+   * @param {number} [time=null] - The timestamp for the command. Uses current time if not provided.
+   */
+
 
   move(twist, frame="base_link", time=null) {
     let [linear, angular] = [ensureVector3(twist[0]), ensureVector3(twist[1])]
@@ -44,17 +64,25 @@ export class Robot {
     this.twistTopic.publish(twistMsg);
   }
 
+
+   /** Open the robot's gripper. */
   openGripper() {
     console.log('Open gripper');
     const message = new ROSLIB.Message({});
     this.openTopic.publish(message);
   }
 
+   /** Close the robot's gripper. */
   closeGripper() {
     console.log('Close gripper');
     const message = new ROSLIB.Message({});
     this.closeTopic.publish(message);
   }
+
+   /**
+   * Control the robot's gripper based on the provided value.
+   * @param {number} value - 1 to open the gripper, 2 to close it.
+   */
 
   controlGripper(value) {
     if (value === 1) {
@@ -64,6 +92,11 @@ export class Robot {
     }
   }
 }
+
+/**
+ * Initialize and connect to the ROS system.
+ * @returns {Promise} Resolves with the ROSLIB Ros instance if successful, rejects with an error otherwise.
+ */
 
 export function initializeRos(){
     return new Promise((resolve, reject) => {
@@ -80,6 +113,13 @@ export function initializeRos(){
         })
     })
 }
+
+/**
+ * Subscribe to a camera topic in ROS and render the images on a canvas element.
+ * @param {object} ros - The ROSLIB Ros instance to connect to.
+ * @param {string} topicName - The name of the camera topic in ROS.
+ * @param {HTMLCanvasElement} element - The canvas element to render the images on.
+ */
 
 
 export function subscribeToCameraTopic(ros, topicName, element) {
@@ -100,6 +140,14 @@ export function subscribeToCameraTopic(ros, topicName, element) {
     });
 }
     
+
+/**
+ * Convert an RGB8 image message from ROS to an ImageData object.
+ * @param {object} msg - The ROS image message.
+ * @param {ImageData} outData - An ImageData object to write the image data to.
+ * @returns {ImageData} The resulting ImageData object.
+ */
+
 
 function rgb8ImageToImageData(msg, outData) {
     const raw = atob(msg.data);
