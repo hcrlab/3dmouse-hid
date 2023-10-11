@@ -1,7 +1,23 @@
 import {DEVICE_SPECS, HID_FILTERS, IDS_TO_NAME} from "./deviceSpecs.js";
 
+/**
+ * Represents a 3D Mouse, which listens to WebHID events and emits custom events.
+ */
+
+
 
 export class ThreeDMouse {
+
+    /**
+     * Constructor for the ThreeDMouse class.
+     * @param {HIDDevice} device - The WebHID device.
+     * @param {Object} dataSpecs - The specifications for the device data.
+     * @param {Object} options - Configuration options.
+     * @param {boolean} options.emitRepeatedEvents - Flag to determine whether to emit repeated events.
+     * @param {Function} options.filter - Filter function to process the raw input.
+     */
+
+
     constructor(device, dataSpecs, {emitRepeatedEvents: emitRepeatedEvents=false, filter: filter}) {
         this.device = device;
         this.dataSpecs = dataSpecs
@@ -66,6 +82,10 @@ export class ThreeDMouse {
         window.dispatchEvent(event)
     }
 
+    /**
+     * Getter and Setter for emitting repeated events.
+     */
+
     set emitRepeatedEvents(value) {
         if (this._emitRepeatedEventsInterval === value) {
             // Idempotent
@@ -79,6 +99,9 @@ export class ThreeDMouse {
             this._emitRepeatedEventsInterval = null
         }
     }
+    /**
+     * Emit a repeated event if the last emitted time exceeds a threshold.
+     */
 
     _emitRepeatedEvent() {
         const currentTime = Date.now();
@@ -88,6 +111,13 @@ export class ThreeDMouse {
             this._lastEmittedTime = this._workingState["t"]
         }
     }
+
+    /**
+     * Static method to request a device. Opens the device if it's not already opened.
+     * @param {Object} options - Options for the request.
+     * @returns {ThreeDMouse} - A new instance of ThreeDMouse.
+     */
+
     static async requestDevice(options) {
         const devices = await navigator.hid.requestDevice({ filters: HID_FILTERS });
 
@@ -156,6 +186,11 @@ export class ThreeDMouse {
         this._workingState["controlChangeCount"] = 0;
         
     }
+    /**
+     * Construct a custom event from the current state.
+     * @param {Object} state - The current working state.
+     * @returns {Event} - A custom event with details.
+     */
 
     _makeEventFromState(state) {
         const transIn = [state["x"], state["y"], state["z"]]
