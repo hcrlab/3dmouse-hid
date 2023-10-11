@@ -2,7 +2,7 @@ import * as THREE from 'three'
 
 /**
  * Rotate a given twist using a rotation matrix.
- * 
+ *
  * @param {Array} twist - A two-element array: [linear, angular], where both linear and angular are vectors.
  * @param {THREE.Matrix3} rotMatrix - A 3x3 matrix used for the rotation.
  * @returns {Array} - The rotated twist as [rotatedLinear, rotatedAngular].
@@ -16,7 +16,7 @@ export function rotateTwist(twist, rotMatrix) {
 
 /**
  * Ensures the given input is a THREE.Vector3 instance. If not, attempts to convert it.
- * 
+ *
  * @param {THREE.Vector3 | Array} input - The input to be converted/ensured.
  * @returns {THREE.Vector3} - The input as a THREE.Vector3.
  * @throws {Error} Throws an error if the input cannot be converted.
@@ -34,7 +34,7 @@ export function ensureVector3(input) {
 
 /**
  * Integrate a given twist in a stepwise manner over a specified time.
- * 
+ *
  * @param {Array} twist - A two-element array: [linear, angular], representing the linear and angular components of the twist.
  * @param {number} time - The total time over which the twist is to be integrated.
  * @param {number} steps - The number of discrete steps for the integration.
@@ -44,7 +44,7 @@ export function ensureVector3(input) {
 export function integrateTwistStepwise(twist, time, steps) {
     let [linear, angular] = [ensureVector3(twist[0]), ensureVector3(twist[1])]
     const dt = time / steps
-    let points = [new THREE.Vector3(0,0,0)]
+    let points = [new THREE.Vector3(0, 0, 0)]
     let stepRotation = angular.clone().multiplyScalar(dt)
     let linearStep = linear.clone().multiplyScalar(dt)
     for (let i = 1; i < steps; i++) {

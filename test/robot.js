@@ -5,92 +5,91 @@ import {ensureVector3} from "../dist/linAlg.js";
  */
 
 
-
 export class Robot {
 
-  /**
-   * Create a Robot instance.
-   * @param {object} ros - The ROSLIB Ros instance to connect to.
-   */
+    /**
+     * Create a Robot instance.
+     * @param {object} ros - The ROSLIB Ros instance to connect to.
+     */
 
-  constructor(ros) {
-    this.ros = ros
-    this.twistTopic = new ROSLIB.Topic({
-      ros: this.ros,
-      name: '/servo_node/delta_twist_cmds',
-      messageType: 'geometry_msgs/msg/TwistStamped'
-    });
-  }
-
-  /**
-   * Send a movement command to the robot.
-   * @param {array} twist - An array with linear and angular movement vectors.
-   * @param {string} [frame="base_link"] - The reference frame for the movement.
-   * @param {number} [time=null] - The timestamp for the command. Uses current time if not provided.
-   */
-
-
-  move(twist, frame="base_link", time=null) {
-    let [linear, angular] = [ensureVector3(twist[0]), ensureVector3(twist[1])]
-    let linearValues = {
-      x: linear.x,
-      y: linear.y,
-      z: linear.z
-    };
-
-    let angularValues = {
-      x: angular.x,
-      y: angular.y,
-      z: angular.z
-    };
-
-    const twistMsg = new ROSLIB.Message({
-      twist: {
-        linear: linearValues,
-        angular: angularValues
-      }
-    });
-
-    if (!time) {
-        time = Date.now()
+    constructor(ros) {
+        this.ros = ros
+        this.twistTopic = new ROSLIB.Topic({
+            ros: this.ros,
+            name: '/servo_node/delta_twist_cmds',
+            messageType: 'geometry_msgs/msg/TwistStamped'
+        });
     }
-    twistMsg.header = new ROSLIB.Message({
-        stamp: {
-            sec: Math.floor(time / 1000),
-            nanosec: (time % 1000) * 1e6
-        },
-        frame_id: frame
-    });
-    this.twistTopic.publish(twistMsg);
-  }
+
+    /**
+     * Send a movement command to the robot.
+     * @param {array} twist - An array with linear and angular movement vectors.
+     * @param {string} [frame="base_link"] - The reference frame for the movement.
+     * @param {number} [time=null] - The timestamp for the command. Uses current time if not provided.
+     */
 
 
-   /** Open the robot's gripper. */
-  openGripper() {
-    console.log('Open gripper');
-    const message = new ROSLIB.Message({});
-    this.openTopic.publish(message);
-  }
+    move(twist, frame = "base_link", time = null) {
+        let [linear, angular] = [ensureVector3(twist[0]), ensureVector3(twist[1])]
+        let linearValues = {
+            x: linear.x,
+            y: linear.y,
+            z: linear.z
+        };
 
-   /** Close the robot's gripper. */
-  closeGripper() {
-    console.log('Close gripper');
-    const message = new ROSLIB.Message({});
-    this.closeTopic.publish(message);
-  }
+        let angularValues = {
+            x: angular.x,
+            y: angular.y,
+            z: angular.z
+        };
 
-   /**
-   * Control the robot's gripper based on the provided value.
-   * @param {number} value - 1 to open the gripper, 2 to close it.
-   */
+        const twistMsg = new ROSLIB.Message({
+            twist: {
+                linear: linearValues,
+                angular: angularValues
+            }
+        });
 
-  controlGripper(value) {
-    if (value === 1) {
-      this.openGripper();
-    } else if (value === 2) {
-      this.closeGripper();
+        if (!time) {
+            time = Date.now()
+        }
+        twistMsg.header = new ROSLIB.Message({
+            stamp: {
+                sec: Math.floor(time / 1000),
+                nanosec: (time % 1000) * 1e6
+            },
+            frame_id: frame
+        });
+        this.twistTopic.publish(twistMsg);
     }
-  }
+
+
+    /** Open the robot's gripper. */
+    openGripper() {
+        console.log('Open gripper');
+        const message = new ROSLIB.Message({});
+        this.openTopic.publish(message);
+    }
+
+    /** Close the robot's gripper. */
+    closeGripper() {
+        console.log('Close gripper');
+        const message = new ROSLIB.Message({});
+        this.closeTopic.publish(message);
+    }
+
+    /**
+     * Control the robot's gripper based on the provided value.
+     * @param {number} value - 1 to open the gripper, 2 to close it.
+     */
+
+    controlGripper(value) {
+        if (value === 1) {
+            this.openGripper();
+        } else if (value === 2) {
+            this.closeGripper();
+        }
+    }
 }
 
 /**
@@ -98,7 +97,7 @@ export class Robot {
  * @returns {Promise} Resolves with the ROSLIB Ros instance if successful, rejects with an error otherwise.
  */
 
-export function initializeRos(){
+export function initializeRos() {
     return new Promise((resolve, reject) => {
         let ros = new ROSLIB.Ros({
             url: 'ws://127.0.0.1:9090'
@@ -129,17 +128,17 @@ export function subscribeToCameraTopic(ros, topicName, element) {
         messageType: 'sensor_msgs/msg/Image'
     });
     let ctx = element.getContext('2d');
-    imageTopic.subscribe(function(message) {
+    imageTopic.subscribe(function (message) {
         element.width = message.width;
         element.height = message.height;
         let imageData = ctx.createImageData(message.width, message.height);
         imageData = rgb8ImageToImageData(message, imageData)
         // Iterate through every pixel
         ctx.putImageData(imageData, 0, 0);
-    
+
     });
 }
-    
+
 
 /**
  * Convert an RGB8 image message from ROS to an ImageData object.

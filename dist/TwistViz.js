@@ -11,7 +11,7 @@ export class TwistViz {
 
     /**
      * Constructor for the TwistViz class.
-     * 
+     *
      * @param {Object} params - Configuration parameters for the TwistViz.
      * @param {HTMLElement} params.container - HTML container for the 3D visualization.
      * @param {HTMLCanvasElement} params.canvas - Canvas for rendering the 3D visualization.
@@ -30,15 +30,15 @@ export class TwistViz {
         this.scene.add(this.movingMarker);
         this.scene.add(this.anchorMarker);
 
-        this.twistTrace = new THREE.Line( 
-            new THREE.BufferGeometry(), 
-            new THREE.LineBasicMaterial( { color: 0x999999, linewidth: 5 } ) );
+        this.twistTrace = new THREE.Line(
+            new THREE.BufferGeometry(),
+            new THREE.LineBasicMaterial({color: 0x999999, linewidth: 5}));
 
         this.scene.add(this.twistTrace)
         this._animationRequest = null;
 
         this.camera = new THREE.PerspectiveCamera(50, container.innerWidth / container.innerHeight, 0.6, 1000);
-        this.camera.up.set(0,0,1)
+        this.camera.up.set(0, 0, 1)
         this.configureForView(targetPose, cameraPose)
         this.renderer = new THREE.WebGLRenderer({antialias: true, alpha: true, canvas: canvas});
         this.renderer.setClearColor("#FFFFFF", 0)
@@ -83,7 +83,7 @@ export class TwistViz {
 
     /**
      * Sets the twist for the visualization and updates the position and orientation of markers.
-     * 
+     *
      * @param {Array} twist - A 2-element array containing linear and angular twists.
      */
 
@@ -97,9 +97,10 @@ export class TwistViz {
         marker.position.copy(finalPoint)
         marker.rotation.copy(new THREE.Euler().setFromVector3(ensureVector3(twist[1])))
     }
-     /**
+
+    /**
      * Sets the orientation for the visualization markers.
-     * 
+     *
      * @param {THREE.Matrix3} rotation - The rotation matrix to set the marker's orientation.
      */
     setMarkerOrientation(rotation) {
@@ -108,7 +109,7 @@ export class TwistViz {
         this.movingMarker.setRotationFromMatrix(rotMatrix4)
     }
 
-     /**
+    /**
      * Render function that draws the current state of the visualization and schedules the next frame.
      */
 
@@ -117,13 +118,13 @@ export class TwistViz {
         this._animationRequest = requestAnimationFrame(this._render.bind(this));
     }
 
-     /**
+    /**
      * Callback to handle when the container element is resized.
      */
 
     _elementResized(_) {
         this.renderer.setSize(this.container.clientWidth, this.container.clientHeight);
-        this.camera.aspect = this.container.clientWidth / this.container.clientHeight; 
+        this.camera.aspect = this.container.clientWidth / this.container.clientHeight;
         this.camera.updateProjectionMatrix();
     }
 
@@ -136,9 +137,9 @@ export class TwistViz {
         this.camera.lookAt(0, 0, 0);
     }
 
-     /**
+    /**
      * Configures the view based on the target and camera poses.
-     * 
+     *
      * @param {THREE.Matrix4} targetPose - The target pose for the view.
      * @param {THREE.Matrix4} cameraPose - Camera pose for the view.
      */
@@ -146,19 +147,20 @@ export class TwistViz {
     configureForView(targetPose, cameraPose) {
         let position = new THREE.Vector3().setFromMatrixPosition(cameraPose)
         this.camera.position.copy(position)
-        this.camera.lookAt(0,0,0)
+        this.camera.lookAt(0, 0, 0)
     }
+
     /**
      * Resets the moving marker to its initial state.
      */
 
-    reset(){
-        this.movingMarker.position.x=0;
-        this.movingMarker.position.y=0;
-        this.movingMarker.position.z=0;
-        this.movingMarker.rotation.x =0;
-        this.movingMarker.rotation.y =0;
-        this.movingMarker.rotation.z =0;
+    reset() {
+        this.movingMarker.position.x = 0;
+        this.movingMarker.position.y = 0;
+        this.movingMarker.position.z = 0;
+        this.movingMarker.rotation.x = 0;
+        this.movingMarker.rotation.y = 0;
+        this.movingMarker.rotation.z = 0;
     }
 
 }

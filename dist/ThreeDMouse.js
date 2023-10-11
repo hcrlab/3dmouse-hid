@@ -5,7 +5,6 @@ import {DEVICE_SPECS, HID_FILTERS, IDS_TO_NAME} from "./deviceSpecs.js";
  */
 
 
-
 export class ThreeDMouse {
 
     /**
@@ -18,7 +17,7 @@ export class ThreeDMouse {
      */
 
 
-    constructor(device, dataSpecs, {emitRepeatedEvents: emitRepeatedEvents=false, filter: filter}) {
+    constructor(device, dataSpecs, {emitRepeatedEvents: emitRepeatedEvents = false, filter: filter}) {
         this.device = device;
         this.dataSpecs = dataSpecs
         this.filter = filter
@@ -27,7 +26,7 @@ export class ThreeDMouse {
         navigator.hid.addEventListener("disconnect", this.handleDisconnectedDevice.bind(this));
         // Leaving t as a sentinel value to make sure we don't fire a misleading empty event
         // when using `emitRepeatedEvents`.
-        this._workingState =  {
+        this._workingState = {
             "t": -1,
             "x": 0.,
             "y": 0.,
@@ -99,6 +98,7 @@ export class ThreeDMouse {
             this._emitRepeatedEventsInterval = null
         }
     }
+
     /**
      * Emit a repeated event if the last emitted time exceeds a threshold.
      */
@@ -119,7 +119,7 @@ export class ThreeDMouse {
      */
 
     static async requestDevice(options) {
-        const devices = await navigator.hid.requestDevice({ filters: HID_FILTERS });
+        const devices = await navigator.hid.requestDevice({filters: HID_FILTERS});
 
         if (devices.length === 0) {
             console.warn("No devices found.");
@@ -137,7 +137,7 @@ export class ThreeDMouse {
         } else {
             console.log("Device is already open:", this.device.productName);
         }
-      
+
     }
 
     /**
@@ -149,10 +149,10 @@ export class ThreeDMouse {
 
         for (const [name, {channel: chan, byte: byte, scale: flip}] of Object.entries(this.dataSpecs.mappings)) {
             if (e.reportId === chan) {
-            this._workingState[name] = flip * data.getInt16(byte, true) / this.dataSpecs.axisScale;
-            if (name === "r" || name === "x") {
-                this._workingState["controlChangeCount"] += 1;
-            }
+                this._workingState[name] = flip * data.getInt16(byte, true) / this.dataSpecs.axisScale;
+                if (name === "r" || name === "x") {
+                    this._workingState["controlChangeCount"] += 1;
+                }
             }
         }
 
@@ -171,7 +171,7 @@ export class ThreeDMouse {
                 newButtonsValue |= state << (8 * byte)
             }
         }
-            
+
         if (this._workingState["controlChangeCount"] <= 1 && !this._workingState["buttonsChanged"]) {
             return;
         }
@@ -184,8 +184,9 @@ export class ThreeDMouse {
         window.dispatchEvent(outEvent);
         this._lastEmittedTime = this._workingState["t"]
         this._workingState["controlChangeCount"] = 0;
-        
+
     }
+
     /**
      * Construct a custom event from the current state.
      * @param {Object} state - The current working state.
@@ -195,7 +196,7 @@ export class ThreeDMouse {
     _makeEventFromState(state) {
         const transIn = [state["x"], state["y"], state["z"]]
         const rotIn = [state["r"], state["p"], state["ya"]]
-        let filtered = this.filter ? this.filter.process(transIn, rotIn): null;
+        let filtered = this.filter ? this.filter.process(transIn, rotIn) : null;
         return new CustomEvent('3dmouseinput', {
             bubbles: true,
             cancelable: true,

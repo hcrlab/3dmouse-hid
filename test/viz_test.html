@@ -22,20 +22,25 @@
             font-family: sans-serif;
             line-height: 1.5;
         }
+
         #interface {
             display: flex;
             gap: .5rem
         }
+
         canvas {
             display: block;
         }
+
         #views {
             flex: 1;
         }
+
         #view {
             max-height: 100vh;
             height: 100%;
         }
+
         #usage-information {
             background-color: #333;
             color: #ccc;
@@ -43,6 +48,7 @@
             margin-top: .5rem;
             border-radius: 4px;
         }
+
         ul {
             padding: 0 0 0 .75rem;
             margin: 0;
@@ -73,8 +79,8 @@
 
 </body>
 <script type="module">
-    import { ThreeDMouse } from '../dist/ThreeDMouse.js';
-    import { TwistViz} from '../dist/TwistViz.js';
+    import {ThreeDMouse} from '../dist/ThreeDMouse.js';
+    import {TwistViz} from '../dist/TwistViz.js';
     import * as THREE from 'three'
     import {createConfigurationPane, updateLastValues} from "./configurationPane.js";
     import {SmoothingDeadbandFilter} from "../dist/filtering.js";
@@ -127,7 +133,13 @@
         twistViz = new TwistViz({container: viewContainer, canvas: vizCanvas, camera_pose: cameraMapping.camera_pose})
         twistViz.begin()
 
-        let ui = createConfigurationPane({container: document.getElementById("configuration"), status: status, filter: filter, filterParams: filterParams, lastValue: lastValue})
+        let ui = createConfigurationPane({
+            container: document.getElementById("configuration"),
+            status: status,
+            filter: filter,
+            filterParams: filterParams,
+            lastValue: lastValue
+        })
         pane = ui["pane"]
         let connectButton = ui["connectButton"]
         let uiFolders = ui["folders"]
@@ -147,8 +159,10 @@
         }
         connectButton.on('click', () =>
             ThreeDMouse.requestDevice(
-                {emitRepeatedEvents: false,
-                    filter: filter}
+                {
+                    emitRepeatedEvents: false,
+                    filter: filter
+                }
             ).then(device => {
                 if (!device) {
                     return

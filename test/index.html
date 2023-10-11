@@ -23,18 +23,22 @@
             font-family: sans-serif;
             line-height: 1.5;
         }
+
         #interface {
             display: inline-flex;
             gap: .5rem
         }
+
         canvas {
             display: block;
         }
+
         #camera-views,
         .view-container {
             position: relative;
             display: inline-block;
         }
+
         .view-container .overlay {
             position: absolute;
             width: 200px;
@@ -42,6 +46,7 @@
             top: 0;
             left: 0
         }
+
         .view-container.inactive {
             --size-percentage: 25%;
             position: absolute;
@@ -51,15 +56,18 @@
             border: 1px solid black;
             z-index: 99;
         }
+
         #control-pane {
 
         }
+
         #usage-information {
             background-color: #333;
             color: #ccc;
             padding: 0.50rem 1rem;
             border-radius: 4px;
         }
+
         ul {
             padding: 0 0 0 .75rem;
             margin: 0;
@@ -67,39 +75,39 @@
     </style>
 </head>
 <body>
-    <section id="interface">
-        <div id="control-pane">
-            <div id="configuration"></div>
-            <div id="plot"></div>
+<section id="interface">
+    <div id="control-pane">
+        <div id="configuration"></div>
+        <div id="plot"></div>
+    </div>
+    <div id="camera-views">
+        <div id="usage-information">
+            <ul>
+                <li>Follow the readme instructions to launch the simulation</li>
+                <li>Use the <i>Connect 3D Mouse</i> button to begin</li>
+                <li>Modify the filtering parameters</li>
+                <li>Click the <i>Graphs</i> label to view the processed signals</li>
+            </ul>
         </div>
-        <div id="camera-views">
-            <div id="usage-information">
-                <ul>
-                    <li>Follow the readme instructions to launch the simulation</li>
-                    <li>Use the <i>Connect 3D Mouse</i> button to begin</li>
-                    <li>Modify the filtering parameters </li>
-                    <li>Click the <i>Graphs</i> label to view the processed signals</li>
-                </ul>
-            </div>
-            <div class="view-container" id="view0">
-                <canvas class="overlay"></canvas>
-                <canvas class="view"></canvas>
-            </div>
-
-            <div class="view-container inactive" id="view1">
-                <canvas class="overlay"></canvas>
-                <canvas class="view"></canvas>
-            </div>
+        <div class="view-container" id="view0">
+            <canvas class="overlay"></canvas>
+            <canvas class="view"></canvas>
         </div>
-    </section>
 
-    
+        <div class="view-container inactive" id="view1">
+            <canvas class="overlay"></canvas>
+            <canvas class="view"></canvas>
+        </div>
+    </div>
+</section>
+
+
 </body>
 <script type="module">
-    import { ThreeDMouse } from '../dist/ThreeDMouse.js';
-    import { rotateTwist } from '../dist/linAlg.js';
-    import { TwistViz} from '../dist/TwistViz.js';
-    import { Robot, subscribeToCameraTopic, initializeRos } from "./robot.js";
+    import {ThreeDMouse} from '../dist/ThreeDMouse.js';
+    import {rotateTwist} from '../dist/linAlg.js';
+    import {TwistViz} from '../dist/TwistViz.js';
+    import {Robot, subscribeToCameraTopic, initializeRos} from "./robot.js";
     import * as THREE from 'three'
     import {createConfigurationPane, updateLastValues} from "./configurationPane.js";
     import {SmoothingDeadbandFilter} from "../dist/filtering.js";
@@ -171,7 +179,13 @@
 
     window.addEventListener('DOMContentLoaded', _ => {
         instructionsContainer = document.getElementById("usage-information")
-        let ui = createConfigurationPane({container: document.getElementById("configuration"), status: status, filter: filter, filterParams: filterParams, lastValue: lastValue})
+        let ui = createConfigurationPane({
+            container: document.getElementById("configuration"),
+            status: status,
+            filter: filter,
+            filterParams: filterParams,
+            lastValue: lastValue
+        })
         pane = ui["pane"]
         let connectButton = ui["connectButton"]
         let uiFolders = ui["folders"]
@@ -185,8 +199,10 @@
 
         connectButton.on('click', () =>
             ThreeDMouse.requestDevice(
-                {emitRepeatedEvents: true,
-                 filter: filter}
+                {
+                    emitRepeatedEvents: true,
+                    filter: filter
+                }
             ).then(device => {
                 if (!device) {
                     return
@@ -202,7 +218,12 @@
                     robot = new Robot(ros)
                     twistVizOverlays = []
                     for (let i = 0; i < cameraMappings.length; i += 1) {
-                        let {topic: topic, axes: axes, control_frame: controlFrame, camera_pose: cameraPose} = cameraMappings[i]
+                        let {
+                            topic: topic,
+                            axes: axes,
+                            control_frame: controlFrame,
+                            camera_pose: cameraPose
+                        } = cameraMappings[i]
                         let viewContainer = document.querySelector(`#view${i}`)
                         const newOverlay = configureVideoView(viewContainer, ros, topic, null, cameraPose)
                         newOverlay.begin()
@@ -250,7 +271,12 @@
         let viewContainer = container.querySelector(".view")
         let overlayContainer = container.querySelector("canvas")
         subscribeToCameraTopic(ros, topic, viewContainer);
-        let overlay = new TwistViz({container: container, canvas: overlayContainer, target_pose: targetPose, camera_pose: cameraPose})
+        let overlay = new TwistViz({
+            container: container,
+            canvas: overlayContainer,
+            target_pose: targetPose,
+            camera_pose: cameraPose
+        })
         return overlay
     }
 

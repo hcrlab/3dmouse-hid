@@ -1,4 +1,3 @@
-
 /**
  * Creates a cubic deadband filter for input values.
  *
@@ -23,16 +22,16 @@ function makeCubicDeadbandFilter(weight, deadband) {
 
 /**
  * Class representing a smoothing filter with deadband for processing input values.
- * This can be used for inputs like joystick movements where minor inputs are to be ignored 
+ * This can be used for inputs like joystick movements where minor inputs are to be ignored
  * (deadband) and remaining inputs are to be smoothed out.
  */
 
 export class SmoothingDeadbandFilter {
 
 
-     /**
+    /**
      * Constructs the filter.
-     * 
+     *
      * @param {Object} options - Configuration options for the filter.
      * @param {number} [options.deadband=0.1] - Deadband value.
      * @param {number} [options.cubicDeadbandWeight=0.3] - Weight assigned to cubic deadband.
@@ -70,7 +69,7 @@ export class SmoothingDeadbandFilter {
         this._deadbandFilter = makeCubicDeadbandFilter(this._cubicDeadbandWeight, this._deadband)
     }
 
-     /**
+    /**
      * Setter for cubic deadband weight. Updates the deadband filter upon change.
      */
 
@@ -94,7 +93,7 @@ export class SmoothingDeadbandFilter {
         return [transProcessed, rotProcessed]
     }
 
-      /**
+    /**
      * Process a specific component (translation or rotation) of the input values using the filter.
      *
      * @private

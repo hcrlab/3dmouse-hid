@@ -1,6 +1,12 @@
 import {Pane} from 'tweakpane';
 
-export function createConfigurationPane({container: container, status: status, filter: filter, filterParams: filterParams, lastValue: lastValue}) {
+export function createConfigurationPane({
+                                            container: container,
+                                            status: status,
+                                            filter: filter,
+                                            filterParams: filterParams,
+                                            lastValue: lastValue
+                                        }) {
     const pane = new Pane({container: container});
     let connectButton = pane.addButton({title: "Connect 3D Mouse", disabled: false})
     if (status) {
@@ -50,7 +56,7 @@ export function createConfigurationPane({container: container, status: status, f
         })
         folders["filtering"] = filteringFolder
     }
-    
+
     if (lastValue) {
         const graphFolder = pane.addFolder({
             title: 'Graphs',
@@ -74,15 +80,25 @@ export function createConfigurationPane({container: container, status: status, f
         });
 
         // Tweakpane doesn't have a readonly binding for Point3 unfortunately
-        let xyzInput = valueFolder.addBinding(lastValue, "xyz", {readonly: false, x: {min: -1, max: 1}, y: {min: -1, max: 1}, z: {min: -1, max: 1}})
-        let rpyInput = valueFolder.addBinding(lastValue, "rpy", {readonly: false, x: {min: -1, max: 1}, y: {min: -1, max: 1}, z: {min: -1, max: 1}})
+        let xyzInput = valueFolder.addBinding(lastValue, "xyz", {
+            readonly: false,
+            x: {min: -1, max: 1},
+            y: {min: -1, max: 1},
+            z: {min: -1, max: 1}
+        })
+        let rpyInput = valueFolder.addBinding(lastValue, "rpy", {
+            readonly: false,
+            x: {min: -1, max: 1},
+            y: {min: -1, max: 1},
+            z: {min: -1, max: 1}
+        })
         inputBindings = {xyz: xyzInput, rpy: rpyInput}
         valueFolder.addBinding(lastValue, 'buttonsValue', {readonly: true})
         valueFolder.addBinding(lastValue, 't', {readonly: true})
         folders["graphs"] = graphFolder
         folders["values"] = valueFolder
     }
-    
+
     return {pane: pane, connectButton: connectButton, folders: folders, input: inputBindings}
 }
 
