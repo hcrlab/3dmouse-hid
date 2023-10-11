@@ -40,9 +40,9 @@ We include a ROS2 Humble robot simulation to enable testing without a robot. You
 
 Our main launch file calls launch files [created by Universal Robotics](https://github.com/UniversalRobots/Universal_Robots_ROS2_Gazebo_Simulation) for placing their robot model in a Gazebo simulation, and also homes the robot and configures camera views:
 
-    ros2 launch 3dmouse-hid/test/ros/ur_teleop_sim.launch.py
+    cd 3dmouse-hid/test/ros && ros2 launch ur_teleop_sim.launch.py
 
-You should see two instances of RViz launch (which you may close). [MoveIt2 Servo](https://moveit.picknik.ai/humble/doc/examples/realtime_servo/realtime_servo_tutorial.html), the package which provides the end-effector twist controller, will be initialized and activated in the final step of the launch file, after which you can confirm that servo is running:
+You should see two instances of RViz launch (which you may close). [MoveIt 2 Servo](https://moveit.picknik.ai/humble/doc/examples/realtime_servo/realtime_servo_tutorial.html), the package which provides the end-effector twist controller, will be initialized and activated in the final step of the launch file, after which you can confirm that servo is running:
 
     ros2 topic pub /servo_node/delta_twist_cmds geometry_msgs/msg/TwistStamped "{ header: { stamp: 'now', 'frame_id': 'tool0' },  twist: {linear: {x: -0.1}, angular: {  }}}" -r 10
 
