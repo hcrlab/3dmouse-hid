@@ -93,3 +93,5 @@ Thumbs.db
 # Project specific
 .~*
 *.csv
+
+__pycache__/
