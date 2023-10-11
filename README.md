@@ -42,7 +42,7 @@ Our main launch file calls launch files [created by Universal Robotics](https://
 
     ros2 launch 3dmouse-hid/test/ros/ur_teleop_sim.launch.py
 
-You should see two instances of RViz launch (which you may close). MoveIt Servo, the package which provides the end-effector twist controller, will be initialized and activated in the final step of the launch file, after which you can confirm that servo is running:
+You should see two instances of RViz launch (which you may close). MoveIt2 Servo(https://moveit.picknik.ai/humble/doc/examples/realtime_servo/realtime_servo_tutorial.html), the package which provides the end-effector twist controller, will be initialized and activated in the final step of the launch file, after which you can confirm that servo is running:
 
     ros2 topic pub /servo_node/delta_twist_cmds geometry_msgs/msg/TwistStamped "{ header: { stamp: 'now', 'frame_id': 'tool0' },  twist: {linear: {x: -0.1}, angular: {  }}}" -r 10
 
