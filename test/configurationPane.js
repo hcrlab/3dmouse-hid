@@ -71,7 +71,7 @@ export function createConfigurationPane({
             interval: 10,
             bufferSize: 300
         }
-        for (let key of ["x", "y", "z", "r", "p", "ya"]) {
+        for (let key of ["x", "y", "z", "roll", "pitch", "yaw"]) {
             graphFolder.addBinding(lastValue, key, GRAPH_OPTIONS)
         }
         const valueFolder = pane.addFolder({
@@ -108,10 +108,10 @@ export function updateLastValues(event, lastValue) {
     lastValue["y"] = values[0][1]
     lastValue["z"] = values[0][2]
     lastValue["xyz"] = {x: lastValue["x"], y: lastValue["y"], z: lastValue["z"]}
-    lastValue["r"] = values[1][0]
-    lastValue["p"] = values[1][1]
-    lastValue["ya"] = values[1][2]
-    lastValue["rpy"] = {x: lastValue["r"], y: lastValue["p"], z: lastValue["ya"]}
+    lastValue["roll"] = values[1][0]
+    lastValue["pitch"] = values[1][1]
+    lastValue["yaw"] = values[1][2]
+    lastValue["rpy"] = {x: lastValue["roll"], y: lastValue["pitch"], z: lastValue["yaw"]}
     lastValue["buttonsValue"] = event.detail.buttonsValue
     lastValue["t"] = event.detail.time
 }

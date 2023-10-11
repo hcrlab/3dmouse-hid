@@ -31,9 +31,9 @@ export class ThreeDMouse {
             "x": 0.,
             "y": 0.,
             "z": 0.,
-            "r": 0.,
-            "p": 0.,
-            "ya": 0.,
+            "roll": 0.,
+            "pitch": 0.,
+            "yaw": 0.,
             "buttonsState": {},
             "buttonsValue": 0,
             "buttonsChanged": false,
@@ -150,7 +150,7 @@ export class ThreeDMouse {
         for (const [name, {channel: chan, byte: byte, scale: flip}] of Object.entries(this.dataSpecs.mappings)) {
             if (e.reportId === chan) {
                 this._workingState[name] = flip * data.getInt16(byte, true) / this.dataSpecs.axisScale;
-                if (name === "r" || name === "x") {
+                if (name === "roll" || name === "x") {
                     this._workingState["controlChangeCount"] += 1;
                 }
             }
@@ -195,7 +195,7 @@ export class ThreeDMouse {
 
     _makeEventFromState(state) {
         const transIn = [state["x"], state["y"], state["z"]]
-        const rotIn = [state["r"], state["p"], state["ya"]]
+        const rotIn = [state["roll"], state["pitch"], state["yaw"]]
         let filtered = this.filter ? this.filter.process(transIn, rotIn) : null;
         return new CustomEvent('3dmouseinput', {
             bubbles: true,
