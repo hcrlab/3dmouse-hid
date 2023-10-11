@@ -50,7 +50,7 @@ export function createConfigurationPane({
         })
         filteringFolder.addBinding(
             filterParams, 'deadbandWeight',
-            {min: 0, max: 10}
+            {min: 0, max: 1.0}
         ).on("change", e => {
             filter.cubicDeadbandWeight = e.value
         })

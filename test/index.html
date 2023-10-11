@@ -43,7 +43,7 @@
             position: absolute;
             width: 200px;
             height: 200px;
-            top: 0;
+            bottom: 0;
             left: 0
         }
 
@@ -55,6 +55,10 @@
             transform: scale(var(--size-percentage));
             border: 1px solid black;
             z-index: 99;
+        }
+
+        .view-container.inactive .overlay {
+            display: none;
         }
 
         #control-pane {
@@ -87,6 +91,7 @@
                 <li>Use the <i>Connect 3D Mouse</i> button to begin</li>
                 <li>Modify the filtering parameters</li>
                 <li>Click the <i>Graphs</i> label to view the processed signals</li>
+                <li>Click the camera views to swap them</li>
             </ul>
         </div>
         <div class="view-container" id="view0">
@@ -160,6 +165,9 @@
                 0, 1, 0, -5,
                 0, 0, 1, 2,
                 0, 0, 0, 1),
+            target_position: new THREE.Vector3(
+                0, 0, 0
+            )
         },
         {
             topic: '/camera1/image_raw',
@@ -173,12 +181,19 @@
                 1, 0, 0, 0,
                 0, 1, 0, -.0001,
                 0, 0, 1, 5,
-                0, 0, 0, 1)
+                0, 0, 0, 1),
+            target_position: new THREE.Vector3(
+                0, 0, 0
+            )
         }
     ]
 
     window.addEventListener('DOMContentLoaded', _ => {
         instructionsContainer = document.getElementById("usage-information")
+        document.getElementById("camera-views").addEventListener("click", e => {
+            currentMapping = (currentMapping + 1) % cameraMappings.length
+            changeActiveVideoView(currentMapping)
+        })
         let ui = createConfigurationPane({
             container: document.getElementById("configuration"),
             status: status,
@@ -222,10 +237,11 @@
                             topic: topic,
                             axes: axes,
                             control_frame: controlFrame,
-                            camera_pose: cameraPose
+                            camera_pose: cameraPose,
+                            target_position: targetPosition
                         } = cameraMappings[i]
                         let viewContainer = document.querySelector(`#view${i}`)
-                        const newOverlay = configureVideoView(viewContainer, ros, topic, null, cameraPose)
+                        const newOverlay = configureVideoView(viewContainer, ros, topic, targetPosition, cameraPose)
                         newOverlay.begin()
                         twistVizOverlays.push(newOverlay)
                     }
@@ -247,10 +263,6 @@
                     }
                     updateLastValues(event, lastValue)
                     uiFolders["values"].refresh()
-                    if (lastValue["buttonsValue"]) {
-                        currentMapping = (currentMapping + 1) % cameraMappings.length
-                        changeActiveVideoView(currentMapping)
-                    }
                 });
                 window.addEventListener("3dmousedisconnected", event => {
                     threeDMouse = null
@@ -274,8 +286,9 @@
         let overlay = new TwistViz({
             container: container,
             canvas: overlayContainer,
-            target_pose: targetPose,
-            camera_pose: cameraPose
+            target_position: targetPose,
+            camera_pose: cameraPose,
+            scale: .5
         })
         return overlay
     }

@@ -15,13 +15,15 @@ export class TwistViz {
      * @param {Object} params - Configuration parameters for the TwistViz.
      * @param {HTMLElement} params.container - HTML container for the 3D visualization.
      * @param {HTMLCanvasElement} params.canvas - Canvas for rendering the 3D visualization.
-     * @param {THREE.Matrix4} params.target_pose - The target pose for the view.
+     * @param {THREE.Vector3} params.targetPosition - The target point for the camera
      * @param {THREE.Matrix4} params.camera_pose - Initial camera pose for the view.
+     * @param {number} params.scale - Percentage of container size to occupy
      */
 
 
-    constructor({container: container, canvas: canvas, target_pose: targetPose, camera_pose: cameraPose}) {
+    constructor({container: container, canvas: canvas, target_position: targetPosition, camera_pose: cameraPose, scale: scale = 1.0}) {
         this.container = container
+        this.scale = scale
         this.scene = new THREE.Scene();
         this.anchorMarker = new Axes({size: .5, thickness: 0.025, opacity: 0.25});
         this.anchorMarker.setColors(0xff0000, 0x00ff00, 0x000ff);
@@ -39,7 +41,7 @@ export class TwistViz {
 
         this.camera = new THREE.PerspectiveCamera(50, container.innerWidth / container.innerHeight, 0.6, 1000);
         this.camera.up.set(0, 0, 1)
-        this.configureForView(targetPose, cameraPose)
+        this.configureForView(targetPosition, cameraPose)
         this.renderer = new THREE.WebGLRenderer({antialias: true, alpha: true, canvas: canvas});
         this.renderer.setClearColor("#FFFFFF", 0)
         this.renderer.setSize(container.clientWidth, container.clientHeight);
@@ -123,7 +125,7 @@ export class TwistViz {
      */
 
     _elementResized(_) {
-        this.renderer.setSize(this.container.clientWidth, this.container.clientHeight);
+        this.renderer.setSize(this.container.clientWidth * this.scale, this.container.clientHeight * this.scale);
         this.camera.aspect = this.container.clientWidth / this.container.clientHeight;
         this.camera.updateProjectionMatrix();
     }
@@ -140,14 +142,18 @@ export class TwistViz {
     /**
      * Configures the view based on the target and camera poses.
      *
-     * @param {THREE.Matrix4} targetPose - The target pose for the view.
+     * @param {THREE.Vector3|null} targetPosition - The target to point the camera at.
      * @param {THREE.Matrix4} cameraPose - Camera pose for the view.
      */
 
-    configureForView(targetPose, cameraPose) {
+    configureForView(targetPosition, cameraPose) {
         let position = new THREE.Vector3().setFromMatrixPosition(cameraPose)
         this.camera.position.copy(position)
-        this.camera.lookAt(0, 0, 0)
+        if (!targetPosition) {
+            // Look at the origin by default
+            targetPosition = new THREE.Vector3(0,0,0)
+        }
+        this.camera.lookAt(targetPosition.x, targetPosition.y, targetPosition.z)
     }
 
     /**
