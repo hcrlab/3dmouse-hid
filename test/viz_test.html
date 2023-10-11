@@ -73,10 +73,11 @@
 
 </body>
 <script type="module">
-    import { ThreeDMouse, SmoothingDeadbandFilter } from '../dist/ThreeDMouse.js';
+    import { ThreeDMouse } from '../dist/ThreeDMouse.js';
     import { TwistViz} from '../dist/TwistViz.js';
     import * as THREE from 'three'
     import {createConfigurationPane, updateLastValues} from "./configurationPane.js";
+    import {SmoothingDeadbandFilter} from "../dist/filtering.js";
 
     let pane = null
     let threeDMouse = null
@@ -87,7 +88,7 @@
     }
     const filterParams = {
         smoothing: .5,
-        softmaxWeight: 50,
+        softmaxTemperature: 50,
         deadbandWeight: .4,
         translationEnabled: true,
         rotationEnabled: true,

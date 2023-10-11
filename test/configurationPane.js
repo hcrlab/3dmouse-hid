@@ -31,10 +31,10 @@ export function createConfigurationPane({container: container, status: status, f
             filter.smoothing = e.value
         })
         filteringFolder.addBinding(
-            filterParams, 'softmaxWeight',
+            filterParams, 'softmaxTemperature',
             {min: 0.01, max: 100}
         ).on("change", e => {
-            filter.softmaxWeight = e.value
+            filter.softmaxTemperature = e.value
         })
         filteringFolder.addBinding(
             filterParams, 'deadbandSize',

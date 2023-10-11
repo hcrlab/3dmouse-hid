@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang=”en”>
-<head>    
+<head>
+    <title>Demonstration Teleoperation Interface</title>
     <meta charset="UTF-8">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
@@ -95,12 +96,13 @@
     
 </body>
 <script type="module">
-    import { ThreeDMouse, SmoothingDeadbandFilter } from '../dist/ThreeDMouse.js';
+    import { ThreeDMouse } from '../dist/ThreeDMouse.js';
     import { rotateTwist } from '../dist/linAlg.js';
     import { TwistViz} from '../dist/TwistViz.js';
     import { Robot, subscribeToCameraTopic, initializeRos } from "./robot.js";
     import * as THREE from 'three'
     import {createConfigurationPane, updateLastValues} from "./configurationPane.js";
+    import {SmoothingDeadbandFilter} from "../dist/filtering.js";
 
     let ros = null
     let robot = null
@@ -117,7 +119,7 @@
     }
     const filterParams = {
         smoothing: .5,
-        softmaxWeight: 50,
+        softmaxTemperature: 50,
         deadbandWeight: .4,
         translationEnabled: true,
         rotationEnabled: true,
