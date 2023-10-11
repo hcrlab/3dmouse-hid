@@ -3,7 +3,26 @@ import * as THREE from 'three'
 import {mergeGeometries} from 'three/addons/utils/BufferGeometryUtils.js'
 
 
+/**
+ * Represents a 3D set of axes (X, Y, Z) using cylinders in a 3D space.
+ * Extends the Mesh class from the three.js library.
+ * Each axis is color-coded: Red for X, Green for Y, and Blue for Z by default.
+ */
+
 class Axes extends Mesh {
+
+
+/**
+     * Constructs the Axes mesh object.
+     * 
+     * @param {Object} options - Configuration options for the axes.
+     * @param {number} [options.size=1] - Specifies the length of each axis. 
+     * @param {number} [options.thickness=0.05] - Defines the thickness or diameter of each cylindrical axis.
+     * @param {number} [options.opacity=1] - Sets the opacity of the axes; 1 being fully opaque and less than 1 being translucent.
+     */
+
+
+
 
 	constructor( {size: size = 1 , thickness: thickness= .05, opacity: opacity = 1}) {
 
@@ -31,6 +50,17 @@ class Axes extends Mesh {
 		this.geometry.groups[2].materialIndex = 2
 		this.type = 'Axes';
 	}
+	
+	
+	/**
+     * Sets the colors of the X, Y, and Z axes. 
+     * Useful if the default colors (Red for X, Green for Y, Blue for Z) need to be changed.
+     * 
+     * @param {string|number} xAxisColor - Color for the X-axis, can be a hexadecimal, string, or RGB format.
+     * @param {string|number} yAxisColor - Color for the Y-axis, can be a hexadecimal, string, or RGB format.
+     * @param {string|number} zAxisColor - Color for the Z-axis, can be a hexadecimal, string, or RGB format.
+     * @returns {Axes} Returns the updated Axes object, allowing for method chaining.
+     */
 
 	setColors( xAxisColor, yAxisColor, zAxisColor ) {
 		this.material[0].color = new Color(xAxisColor)

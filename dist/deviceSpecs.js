@@ -1,4 +1,14 @@
-// Similar to Python's namedtuple
+
+
+/**
+ * Factory function to create a named tuple-like constructor.
+ * Similar to Python's namedtuple, but in JavaScript flavor.
+ *
+ * @param {string} name - The name of the tuple (primarily for debugging purposes).
+ * @param {string[]} properties - An array of property names for the tuple.
+ * @returns {function} - A constructor function for the tuple.
+ */
+
 function createNamedTuple(name, properties) {
   return function (...values) {
     const tuple = {};
@@ -8,14 +18,30 @@ function createNamedTuple(name, properties) {
     return tuple;
   };
 }
-// Creating a mapping:
-// We map all devices so that the +X axis extends out the right of the puck, +Y out the front, and +Z upward
-// Roll pitch and yaw are configured so that positive rotations correspond to clockwise motion when looking
-// along the positive axis. When mapped correctly, the TwistViz should appear to mimic the movement applied
-// to the device,
+
+
+
+/**
+ * Device Mapping Configuration:
+ * 
+ * This section is dedicated to defining and mapping various devices.
+ * It ensures that the +X axis extends out the right of the puck, 
+ * +Y out the front, and +Z upward. Roll, pitch, and yaw are configured 
+ * so that positive rotations correspond to clockwise motion when looking
+ * along the positive axis. When mapped correctly, the TwistViz should 
+ * appear to mimic the movement applied to the device.
+ */
+
+
 const AxisSpec = createNamedTuple("AxisSpec", ["channel", "byte", "scale"]);
 const ButtonSpec = createNamedTuple("ButtonSpec", ["name", "channel", "byte", "bit"]);
 const DeviceSpec = createNamedTuple("DeviceSpec", ["name", "hidIds", "ledId", "mappings", "buttonMapping", "axisScale"]);
+
+/**
+ * Detailed specifications for each supported device. 
+ * This object acts as a dictionary where the key is the device name, 
+ * and the value is an instance of DeviceSpec, detailing its configuration.
+ */
 
 export const DEVICE_SPECS = {
   "SpaceNavigator": new DeviceSpec(
@@ -167,6 +193,10 @@ export const DEVICE_SPECS = {
   ),
 };
 
+/**
+ * Generates a list of HID filters based on the device specifications. 
+ * These filters can be used to request access to specific HID devices.
+ */
 
 let filters = [];
 for (const [_, properties] of Object.entries(DEVICE_SPECS)) {
@@ -176,6 +206,12 @@ for (const [_, properties] of Object.entries(DEVICE_SPECS)) {
 }
 
 export const HID_FILTERS = filters;
+
+/**
+ * Maps vendor and product IDs to device names.
+ * This dictionary can be used to identify devices based on their IDs.
+ */
+
 
 let idsToName = {}
 for (const [_, properties] of Object.entries(DEVICE_SPECS)) {
