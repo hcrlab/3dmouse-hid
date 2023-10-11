@@ -40,7 +40,7 @@ Then try `test/index.html`
     # ros2 topic pub /servo_node/delta_twist_cmds geometry_msgs/msg/TwistStamped "{ header: { stamp: 'now', 'frame_id': 'tool0' },  twist: {linear: {x: -0.1}, angular: {  }}}" -r 10
 
 
-    ros2 launch 3dmouse-hid/ros/ur_teleop_sim.launch.py
+    ros2 launch 3dmouse-hid/test/ros/ur_teleop_sim.launch.py
 
 
 ## Usage

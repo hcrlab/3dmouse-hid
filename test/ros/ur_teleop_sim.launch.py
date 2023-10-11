@@ -21,9 +21,8 @@ from launch.substitutions import (EnvironmentVariable, FindExecutable,
 # ros2 launch Python API: https://docs.ros.org/en/ros2_packages/rolling/api/launch/launch.actions.html
 def generate_launch_description():
     ur_gazebo_sim = IncludeLaunchDescription(
-      PythonLaunchDescriptionSource([os.path.join(
-         get_package_share_directory('ur_simulation_gazebo'), 'launch'),
-         '/ur_sim_moveit.launch.py'])
+      PythonLaunchDescriptionSource(['ur_sim_moveit.launch.py']),
+      launch_arguments={"launch_rviz": "false"}.items()
       )
     rosbridge_websocket = Node(
             package='rosbridge_server',
