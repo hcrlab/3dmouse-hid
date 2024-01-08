@@ -153,7 +153,7 @@
         ui["input"]["rpy"].on("change", updateViz)
 
         if (!navigator.hid) {
-            configurationParams["message"] = "WebHID is not available. Are you using Chrome or Edge? Are you running from localhost or HTTPS?";
+            status["message"] = "WebHID is not available. Are you using Chrome or Edge? Are you running from localhost or HTTPS?";
             connectButton.disabled = true
             return
         }
@@ -167,7 +167,6 @@
                 if (!device) {
                     return
                 }
-                instructionsContainer.style.display = "none"
 
                 window.addEventListener("3dmouseinput", event => {
                     let values = event.detail.filteredInput

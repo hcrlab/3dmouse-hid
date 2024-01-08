@@ -13,7 +13,7 @@
     "teleoperation",
     "robot"
   ],
-  "author": "Varad Dhat",
+  "contributors": ["Varad Dhat <vdhat@uw.edu>", "Nick Walker <nswalker@cs.washington.edu> (https://nickwalker.us/)"],
   "license": "BSD-2-Clause",
   "dependencies": {
     "three": "0.156.0"

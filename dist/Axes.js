@@ -5,7 +5,6 @@ import {mergeGeometries} from 'three/addons/utils/BufferGeometryUtils.js'
 
 /**
  * Represents a 3D set of axes (X, Y, Z) using cylinders in a 3D space.
- * Extends the Mesh class from the three.js library.
  * Each axis is color-coded: Red for X, Green for Y, and Blue for Z by default.
  */
 

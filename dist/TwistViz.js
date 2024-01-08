@@ -3,7 +3,7 @@ import {Axes} from "./Axes.js";
 import {ensureVector3, integrateTwistStepwise} from "./linAlg.js";
 
 /**
- * Class that represents a visual twist representation in 3D.
+ * Class that renders a twist in 3D.
  */
 
 

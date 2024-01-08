@@ -23,7 +23,7 @@ function makeCubicDeadbandFilter(weight, deadband) {
 /**
  * Class representing a smoothing filter with deadband for processing input values.
  * This can be used for inputs like joystick movements where minor inputs are to be ignored
- * (deadband) and remaining inputs are to be smoothed out.
+ * (deadband) and remaining inputs are to be smoothed temporally.
  */
 
 export class SmoothingDeadbandFilter {
@@ -114,9 +114,10 @@ export class SmoothingDeadbandFilter {
             filtered = vPrev.map(x => x * this.smoothing)
         } else {
             const filteredExp = filtered.map(x => Math.exp(Math.abs(x) / this.softmaxTemperature))
-            const transExpNorm = filteredExp.reduce((a, b) => a + b, 0)
-            let softmax = filteredExp.map(x => x / transExpNorm)
-            filtered = filtered.map((x, i) => x * softmax[i])
+            const filteredExpNorm = filteredExp.reduce((a, b) => a + b, 0)
+            let softmaxWeights = filteredExp.map(x => x / filteredExpNorm)
+            filtered = filtered.map((x, i) => x * softmaxWeights[i])
+            // Renormalize
             const softmaxedNorm = filtered.reduce((a, b) => a + Math.abs(b), 0)
             filtered = filtered.map(x => x * (filteredNorm / softmaxedNorm) * scaleFactor)
             // Combine the filtered value with the previous value for smoothing
