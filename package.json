@@ -1,6 +1,6 @@
 {
   "name": "3dmouse-hid",
-  "version": "0.9.0",
+  "version": "0.9.1",
   "description": "Wrapper and tools for 3D mice",
   "main": "dist/ThreeDMouse.js",
   "repository": {
