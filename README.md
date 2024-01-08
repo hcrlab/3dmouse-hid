@@ -22,11 +22,11 @@ On other systems, this is not necessary.
 
 ### Running the Included Demos
 
-No build steps are required to run our included demos. Simply run a server in the root of the package:
+No build steps are required to run our included demos. Simply run a server using:
 
-    python3 -m http.server --bind 127.0.0.1
+    npm run test
 
-Open localhost:8000 in Chrome. Note WebHID is typically only available in HTTPS contexts, and that the default address, `0.0.0.0` won't work as it isn't allowlisted.
+Open localhost:8000/test in Chrome. Note WebHID is typically only available in HTTPS contexts.
 
 #### Playing with the Visualization and Filters
 
