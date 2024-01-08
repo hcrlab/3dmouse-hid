@@ -196,7 +196,7 @@ export const DEVICE_SPECS = {
  */
 
 let filters = [];
-for (const [_, properties] of Object.entries(DEVICE_SPECS)) {
+for (const properties of Object.values(DEVICE_SPECS)) {
     for (const [vendorId, productId] of properties.hidIds) {
         filters.push({vendorId: vendorId, productId: productId});
     }
@@ -211,7 +211,7 @@ export const HID_FILTERS = filters;
 
 
 let idsToName = {}
-for (const [_, properties] of Object.entries(DEVICE_SPECS)) {
+for (const properties of Object.values(DEVICE_SPECS)) {
     for (const [vendorId, productId] of properties.hidIds) {
         idsToName[[vendorId, productId]] = properties.name;
     }
