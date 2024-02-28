@@ -13,7 +13,7 @@ We have tested this code under Ubuntu 22.04. Note that WebHID is only [supported
 Using (Ubuntu) Linux, in order to get access from user space, add the following, using the USB Vendor ID returned from `lsusb` to a udev rules file (e.g. `/etc/udev/rules/50-3d-mouse.rules`):
 
 ```
-SUBSYSTEM=="usb", ATTRS{idVendor}=="046d", MODE:="0666", GROUP="input"
+SUBSYSTEM=="hidraw", ATTRS{idVendor}=="046d", MODE:="0666", GROUP="input"
 ```
 
 And run `sudo udevadm control --reload-rules && sudo udevadm trigger`
