@@ -107,6 +107,11 @@ export class SmoothingDeadbandFilter {
       this._previousOutput[1],
       this.rotationMultiplier,
     );
+    // Zero out very small (less than epsilon) values. The deadband will
+    // clamp _inputs_, but because of the temporal smoothing, the output will
+    // take a long time to settle all the way to zero unless we do this.
+    transProcessed = transProcessed.map((x) => Math.abs(x) < 1e-6 ? 0 : x);
+    rotProcessed = rotProcessed.map((x) => Math.abs(x) < 1e-6 ? 0 : x);
     this._previousOutput = [transProcessed, rotProcessed];
     return [transProcessed, rotProcessed];
   }

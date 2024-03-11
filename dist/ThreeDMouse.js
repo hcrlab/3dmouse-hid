@@ -45,8 +45,8 @@ export class ThreeDMouse {
       pitch: 0,
       yaw: 0,
       buttonsState: {},
+      buttonsChanged: {},
       buttonsValue: 0,
-      buttonsChanged: false,
       controlChangeCount: 0,
     };
     this._emitRepeatedEventsInterval = null;
@@ -113,7 +113,8 @@ export class ThreeDMouse {
   }
 
   /**
-   * Emit a repeated event if the last emitted time exceeds a threshold.
+   * Emit a repeated event if no new data is heard for a while.
+   * This is useful
    */
 
   _emitRepeatedEvent() {
@@ -166,6 +167,8 @@ export class ThreeDMouse {
       if (e.reportId === chan) {
         this._workingState[name] =
           (flip * data.getInt16(byte, true)) / this.dataSpecs.axisScale;
+        // We count the number of packets we've processed and only emit
+        // when we've seen both XYZ and RPY data
         if (name === "roll" || name === "x") {
           this._workingState["controlChangeCount"] += 1;
         }
@@ -185,21 +188,26 @@ export class ThreeDMouse {
         bit: bit,
       } = this.dataSpecs.buttonMapping[button_index];
       if (e.reportId === chan) {
-        this._workingState["buttonsChanged"] = true;
         if (newButtonsValue === null) {
           newButtonsValue = 0;
         }
         // update the button vector
         const mask = 1 << bit;
-        const state = data.getUint8(byte) & mask;
-        this._workingState["buttonsState"][name] = state !== 0;
+        const state = (data.getUint8(byte) & mask) !== 0;
+        const previousValue = this._workingState["buttonsState"][name]
+        const changed = state !== previousValue
+        if (changed) {
+          window.dispatchEvent(this._makeButtonEvent(name, state))
+        }
+        this._workingState["buttonsChanged"][name] = changed
+        this._workingState["buttonsState"][name] = state ;
         newButtonsValue |= state << (8 * byte);
       }
     }
 
+    // If we haven't seen all the control data don't emit
     if (
-      this._workingState["controlChangeCount"] <= 1 &&
-      !this._workingState["buttonsChanged"]
+      this._workingState["controlChangeCount"] <= 1 && newButtonsValue === null
     ) {
       return;
     }
@@ -235,5 +243,19 @@ export class ThreeDMouse {
         time: this._workingState["t"],
       },
     });
+  }
+
+  _makeButtonEvent(name, buttonState) {
+    let type = "3dmousebuttondown"
+    if (!buttonState) {
+      type = "3dmousebuttonup"
+    }
+    return new CustomEvent(type, {
+      bubbles: true,
+      cancelable: true,
+      detail: {
+        name: name
+      }
+    })
   }
 }

@@ -11,16 +11,13 @@
     <script type="importmap">
       {
         "imports": {
-          "three": "https://unpkg.com/three@0.156.1/build/three.module.js",
-          "three/addons/": "https://unpkg.com/three@0.156.1/examples/jsm/",
-          "tweakpane": "https://cdn.jsdelivr.net/npm/tweakpane@4.0.1/dist/tweakpane.min.js"
+          "three": "https://unpkg.com/three@0.162.0/build/three.module.js",
+          "three/addons/": "https://unpkg.com/three@0.162.0/examples/jsm/",
+          "tweakpane": "https://cdn.jsdelivr.net/npm/tweakpane@4.0.3/dist/tweakpane.min.js"
         }
       }
     </script>
-    <script
-      type="module"
-      src="https://cdn.jsdelivr.net/npm/roslib@1/build/roslib.min.js"
-    ></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/roslibjs/1.1.0/roslib.min.js" integrity="sha512-x2Owc9WayRcRj80Znkau58shVfXN2OIX+gQAlrx6KPugZBKrIC6AwgEWQQCI06p2Q8RB4ilxD+y+1BdNd+1fQA==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
     <style>
       body {
         background-color: white;
@@ -110,6 +107,8 @@
       deadbandWeight: 0.4,
       translationEnabled: true,
       rotationEnabled: true,
+      translationScale: 1.0,
+      rotationScale: 1.0,
       deadbandSize: 0.1,
     };
     const lastValue = {
@@ -186,13 +185,16 @@
       }
       connectButton.on("click", () =>
         ThreeDMouse.requestDevice({
-          emitRepeatedEvents: false,
+          emitRepeatedEvents: true,
           filter: filter,
         })
           .then((device) => {
             if (!device) {
               return;
             }
+            // We stop listening to the input when the 3D mouse is connected
+            ui["input"]["xyz"].off("change", updateViz);
+            ui["input"]["rpy"].off("change", updateViz);
 
             window.addEventListener("3dmouseinput", (event) => {
               let values = event.detail.filteredInput;
@@ -203,19 +205,24 @@
               uiFolders["values"].refresh();
             });
             window.addEventListener("3dmousedisconnected", (event) => {
+              ui["input"]["xyz"].on("change", updateViz);
+              ui["input"]["rpy"].on("change", updateViz);
               threeDMouse = null;
               connectButton.disabled = false;
-              twistViz.stop();
-              uiFolders["filtering"].disabled = true;
-              uiFolders["graphs"].disabled = true;
+              Object.values(uiFolders).forEach(
+                      (folder) => (folder.disabled = true),
+              );
             });
 
             threeDMouse = device;
-            uiFolders["filtering"].disabled = true;
-            uiFolders["graphs"].disabled = false;
+            connectButton.disabled = true;
+            Object.values(uiFolders).forEach(
+                    (folder) => (folder.disabled = false),
+            );
           })
           .catch((error) => {
             status["message"] = error;
+            console.error(error)
             pane.refresh();
           }),
       );

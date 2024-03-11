@@ -1,8 +1,20 @@
 import { Pane } from "tweakpane";
 
+/**
+ * Demo helper UI with sliders and checkboxes for tuning filtering parameters,
+ * and interactive line plots for component values
+ * @param container
+ * @param {any?} status
+ * @param {Object?} hostParam
+ * @param filter input filtering object controls will modify
+ * @param {Object?} filterParams
+ * @param lastValue
+ * @returns {{input: {}, folders: *[], pane: Pane, connectButton: *}}
+ */
 export function createConfigurationPane({
   container: container,
   status: status,
+  hostParam: hostParam,
   filter: filter,
   filterParams: filterParams,
   lastValue: lastValue,
@@ -18,6 +30,10 @@ export function createConfigurationPane({
       multiline: true,
       bufferSize: 5,
     });
+    // Allow user to point to a roslibjs websocket of their choice
+    if (hostParam) {
+      pane.addBinding(hostParam, "host", { label: "Host" });
+    }
     for (let key of Object.keys(status)) {
       if (key === "message") continue;
       pane.addBinding(status, key, { readonly: true });
@@ -31,33 +47,49 @@ export function createConfigurationPane({
       title: "Filtering",
       disabled: true,
     });
+    let translationScaleBinding = null;
+    let rotationScaleBinding = null;
+    // Having separate checkboxes for toggling translation and rotation allows the
+    // user to specify a scale for each, then disable the component without losing the scale.
     filteringFolder
-      .addBinding(filterParams, "translationEnabled")
+      .addBinding(filterParams, "translationEnabled", { label: "Translation" })
       .on("change", (e) => {
-        filter.translationMultiplier = e.value ? 1 : 0;
+        filter.translationMultiplier = e.value ? filterParams["translationScale"] : 0;
+        translationScaleBinding.disabled = !e.value
       });
     filteringFolder
-      .addBinding(filterParams, "rotationEnabled")
+      .addBinding(filterParams, "rotationEnabled", { label: "Rotation" })
       .on("change", (e) => {
-        filter.rotationMultiplier = e.value ? 1 : 0;
+        filter.rotationMultiplier = e.value ? filterParams["rotationScale"] : 0;
+        rotationScaleBinding.disabled = !e.value
       });
+    translationScaleBinding = filteringFolder
+        .addBinding(filterParams, "translationScale", { label: "Translation Scale", min: 0.0, max: 3.0 })
+        .on("change", (e) => {
+          filter.translationMultiplier = e.value;
+        });
+    rotationScaleBinding = filteringFolder
+        .addBinding(filterParams, "rotationScale", { label: "Rotation Scale", min: 0.0, max: 3.0 })
+        .on("change", (e) => {
+          filter.rotationMultiplier = e.value;
+        });
     filteringFolder
-      .addBinding(filterParams, "smoothing", { min: 0.0, max: 1.0 })
+      .addBinding(filterParams, "smoothing", { label:"Temporal Smoothing", min: 0.0, max: 1.0 })
       .on("change", (e) => {
         filter.smoothing = e.value;
       });
     filteringFolder
-      .addBinding(filterParams, "softmaxTemperature", { min: 0.01, max: 100 })
+      .addBinding(filterParams, "softmaxTemperature", { label: "Softmax Temp", min: 0.01, max: 100 })
       .on("change", (e) => {
         filter.softmaxTemperature = e.value;
       });
     filteringFolder
-      .addBinding(filterParams, "deadbandSize", { min: 0, max: 1.0 })
+      .addBinding(filterParams, "deadbandSize", { label: "Deadband Size", min: 0, max: 1.0 })
       .on("change", (e) => {
         filter.deadband = e.value;
       });
     filteringFolder
-      .addBinding(filterParams, "deadbandWeight", { min: 0, max: 1.0 })
+      .addBinding(filterParams, "deadbandWeight", { label: "Sensitivity (beta)", min: 0, max: 1.0 })
       .on("change", (e) => {
         filter.cubicDeadbandWeight = e.value;
       });
@@ -66,7 +98,7 @@ export function createConfigurationPane({
 
   if (lastValue) {
     const graphFolder = pane.addFolder({
-      title: "Graphs",
+      title: "Filtered Graphs",
       disabled: true,
       expanded: false,
     });
@@ -82,7 +114,7 @@ export function createConfigurationPane({
       graphFolder.addBinding(lastValue, key, GRAPH_OPTIONS);
     }
     const valueFolder = pane.addFolder({
-      title: "Values",
+      title: "Raw Values",
       disabled: true,
     });
 

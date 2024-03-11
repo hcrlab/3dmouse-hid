@@ -1,7 +1,7 @@
 import { ensureVector3 } from "../dist/linAlg.js";
 
 /**
- * Represents a Robot interface for ROS.
+ * A class representing a robot connecting via ROS
  */
 
 export class Robot {
@@ -14,8 +14,26 @@ export class Robot {
     this.ros = ros;
     this.twistTopic = new ROSLIB.Topic({
       ros: this.ros,
+      //name: "/threedmouse/twist",
       name: "/servo_node/delta_twist_cmds",
       messageType: "geometry_msgs/msg/TwistStamped",
+    });
+
+    // JSON string of button state dictionary
+    this.buttonsTopic = new ROSLIB.Topic({
+      ros: this.ros,
+      name: "/threedmouse/buttons",
+      messageType: "std_msgs/msg/String",
+    });
+
+    // We have avoided defining any ROS message types because
+    // we don't want the main package to depend on ROS, and because
+    // we don't want to require building some other package just to use the demo.
+    // So we'll string-ly type the button up/down events
+    this.buttonChangeTopic = new ROSLIB.Topic({
+      ros: this.ros,
+      name: "/threedmouse/button_change",
+      messageType: "std_msgs/msg/String",
     });
   }
 
@@ -60,32 +78,13 @@ export class Robot {
     this.twistTopic.publish(twistMsg);
   }
 
-  /** Open the robot's gripper. */
-  openGripper() {
-    console.log("Open gripper");
-    const message = new ROSLIB.Message({});
-    this.openTopic.publish(message);
+  forwardButtonStates(states) {
+    this.buttonsTopic.publish(new ROSLIB.Message({ data: JSON.stringify(states) }));
+  }
+  forwardButtonChange(name, state) {
+    this.buttonChangeTopic.publish(new ROSLIB.Message({ data: `${name},${state}`}));
   }
 
-  /** Close the robot's gripper. */
-  closeGripper() {
-    console.log("Close gripper");
-    const message = new ROSLIB.Message({});
-    this.closeTopic.publish(message);
-  }
-
-  /**
-   * Control the robot's gripper based on the provided value.
-   * @param {number} value - 1 to open the gripper, 2 to close it.
-   */
-
-  controlGripper(value) {
-    if (value === 1) {
-      this.openGripper();
-    } else if (value === 2) {
-      this.closeGripper();
-    }
-  }
 }
 
 /**
@@ -93,10 +92,10 @@ export class Robot {
  * @returns {Promise} Resolves with the ROSLIB Ros instance if successful, rejects with an error otherwise.
  */
 
-export function initializeRos() {
+export function initializeRos(host="ws://127.0.0.1:9090") {
   return new Promise((resolve, reject) => {
     let ros = new ROSLIB.Ros({
-      url: "ws://127.0.0.1:9090",
+      url: host,
     });
 
     ros.on("connection", () => {
