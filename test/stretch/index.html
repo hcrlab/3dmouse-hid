@@ -1,0 +1,352 @@
+<!doctype html>
+<html lang="”en”">
+  <head>
+    <title>Demonstration Teleoperation Interface</title>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta
+      name="viewport"
+      content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0"
+    />
+    <!-- See threejs usage documentation: https://threejs.org/docs/#manual/en/introduction/Installation -->
+    <script type="importmap">
+      {
+        "imports": {
+          "three": "https://unpkg.com/three@0.162.0/build/three.module.js",
+          "three/addons/": "https://unpkg.com/three@0.162.0/examples/jsm/",
+          "tweakpane": "https://cdn.jsdelivr.net/npm/tweakpane@4.0.3/dist/tweakpane.min.js"
+        }
+      }
+    </script>
+    <script
+      type="module"
+      src="https://cdn.jsdelivr.net/npm/roslib@1/build/roslib.min.js"
+    ></script>
+    <style>
+      body {
+        background-color: #111;
+        margin: 1rem;
+        font-family: sans-serif;
+        line-height: 1.5;
+      }
+
+      #interface {
+        display: inline-flex;
+        gap: 0.5rem;
+      }
+
+      canvas {
+        display: block;
+      }
+
+      #camera-views,
+      .view-container {
+        position: relative;
+        display: inline-block;
+      }
+
+      .view-container .overlay {
+        position: absolute;
+        width: 200px;
+        height: 200px;
+        bottom: 0;
+        left: 0;
+      }
+
+      .view-container.inactive {
+        --size-percentage: 25%;
+        position: absolute;
+        left: calc((100% - var(--size-percentage)) / 2);
+        bottom: calc((100% - var(--size-percentage)) / 2);
+        transform: scale(var(--size-percentage));
+        border: 1px solid black;
+        z-index: 99;
+      }
+
+      .view-container.inactive .overlay {
+        display: none;
+      }
+
+      #control-pane {
+      }
+
+      #usage-information {
+        background-color: #333;
+        color: #ccc;
+        padding: 0.5rem 1rem;
+        border-radius: 4px;
+      }
+
+      ul {
+        padding: 0 0 0 0.75rem;
+        margin: 0;
+      }
+    </style>
+  </head>
+  <body>
+    <section id="interface">
+      <div id="control-pane">
+        <div id="configuration"></div>
+        <div id="plot"></div>
+      </div>
+      <div id="camera-views">
+        <div id="usage-information">
+          <ul>
+            <li>Follow the readme instructions to launch the simulation</li>
+            <li>Use the <i>Connect 3D Mouse</i> button to begin</li>
+            <li>Modify the filtering parameters</li>
+            <li>Click the <i>Graphs</i> label to view the processed signals</li>
+            <li>Click the camera views to swap them</li>
+          </ul>
+        </div>
+        <div class="view-container" id="view0">
+          <canvas class="overlay"></canvas>
+          <canvas class="view"></canvas>
+        </div>
+
+        <div class="view-container inactive" id="view1">
+          <canvas class="overlay"></canvas>
+          <canvas class="view"></canvas>
+        </div>
+      </div>
+    </section>
+  </body>
+  <script type="module">
+    import { ThreeDMouse } from "../../dist/ThreeDMouse.js";
+    import { rotateTwist } from "../../dist/linAlg.js";
+    import { TwistViz } from "../../dist/TwistViz.js";
+    import { Robot, subscribeToCameraTopic, initializeRos } from "../robot.js";
+    import * as THREE from "three";
+    import {
+      createConfigurationPane,
+      updateLastValues,
+    } from "../configurationPane.js";
+    import { SmoothingDeadbandFilter } from "../../dist/filtering.js";
+
+    let ros = null;
+    let robot = null;
+    const hostParam = {
+      host: "ws://127.0.0.1:9090"
+    };
+    let threeDMouse = null;
+    let filter = new SmoothingDeadbandFilter({ smoothing: 0.5, deadband: 0.1 });
+    let twistVizOverlays = null;
+    let pane = null;
+    let uiFolders = null;
+    let instructionsContainer = null;
+
+    const status = {
+      message: "",
+      rosStatus: false,
+    };
+    const filterParams = {
+      smoothing: 0.5,
+      softmaxTemperature: 50,
+      deadbandWeight: 0.4,
+      translationEnabled: true,
+      rotationEnabled: true,
+      translationScale: 1.0,
+      rotationScale: 1.0,
+      deadbandSize: 0.1,
+    };
+    const lastValue = {
+      x: 0,
+      y: 0,
+      z: 0,
+      roll: 0,
+      pitch: 0,
+      yaw: 0,
+      buttonsValue: 0,
+      t: 0,
+      xyz: { x: 0, y: 0, z: 0 },
+      rpy: { x: 0, y: 0, z: 0 },
+    };
+    let currentMapping = 0;
+    let cameraMappings = [
+      {
+        topic: "/navigation_camera/image_raw/rotated/compressed",
+        axes: new THREE.Matrix3(0, -1, 0, 1, 0, 0, 0, 0, 1),
+        control_frame: "base_link",
+        camera_pose: new THREE.Matrix4(
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -5,
+          0,
+          0,
+          1,
+          2,
+          0,
+          0,
+          0,
+          1,
+        ),
+        target_position: new THREE.Vector3(0, 0, 0),
+      },
+      {
+        topic: "/gripper_camera/color/image_rect_raw/compressed",
+        axes: new THREE.Matrix3(0, 1, 0, -1, 0, 0, 0, 0, 1),
+        control_frame: "base_link",
+        camera_pose: new THREE.Matrix4(
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -0.0001,
+          0,
+          0,
+          1,
+          5,
+          0,
+          0,
+          0,
+          1,
+        ),
+        target_position: new THREE.Vector3(0, 0, 0),
+      },
+    ];
+
+    window.addEventListener("DOMContentLoaded", (_) => {
+      instructionsContainer = document.getElementById("usage-information");
+      document.getElementById("camera-views").addEventListener("click", (e) => {
+        currentMapping = (currentMapping + 1) % cameraMappings.length;
+        changeActiveVideoView(currentMapping);
+      });
+      let ui = createConfigurationPane({
+        container: document.getElementById("configuration"),
+        status: status,
+        hostParam: hostParam,
+        filter: filter,
+        filterParams: filterParams,
+        lastValue: lastValue,
+      });
+      pane = ui["pane"];
+      let connectButton = ui["connectButton"];
+      let uiFolders = ui["folders"];
+
+      // Check if WebHID is available before going further.
+      if (!navigator.hid) {
+        status["message"] =
+          "WebHID is not available. Are you using Chrome or Edge? Are you running from localhost or HTTPS?";
+        connectButton.disabled = true;
+        return;
+      }
+
+      connectButton.on("click", () =>
+        ThreeDMouse.requestDevice({
+          emitRepeatedEvents: true,
+          filter: filter,
+        }).then((device) => {
+          if (!device) {
+            return;
+          }
+          initializeRos(hostParam["host"])
+            .then((rosConnection) => {
+              ros = rosConnection;
+              instructionsContainer.style.display = "none";
+              status["rosStatus"] = true;
+              ros.on("error", (e) => {
+                status["rosStatus"] = false;
+                status["message"] = "ROS connection error";
+              });
+              robot = new Robot(ros);
+              twistVizOverlays = [];
+              for (let i = 0; i < cameraMappings.length; i += 1) {
+                let {
+                  topic: topic,
+                  axes: axes,
+                  control_frame: controlFrame,
+                  camera_pose: cameraPose,
+                  target_position: targetPosition,
+                } = cameraMappings[i];
+                let viewContainer = document.querySelector(`#view${i}`);
+                const newOverlay = configureVideoView(
+                  viewContainer,
+                  ros,
+                  topic,
+                  targetPosition,
+                  cameraPose,
+                );
+                newOverlay.begin();
+                twistVizOverlays.push(newOverlay);
+              }
+            })
+            .catch((error) => {
+              status["message"] = "Error: ROS webbridge connection failed";
+            });
+
+          window.addEventListener("3dmousebuttonup", (event) => {
+            robot.forwardButtonChange(event.detail.name, "up");
+          });
+          window.addEventListener("3dmousebuttondown", (event) => {
+            robot.forwardButtonChange(event.detail.name, "down");
+          });
+          window.addEventListener("3dmouseinput", (event) => {
+            let values = event.detail.filteredInput;
+            if (twistVizOverlays) {
+              let { axes: axes, control_frame: controlFrame } =
+                cameraMappings[currentMapping];
+              for (let i = 0; i < cameraMappings.length; i += 1) {
+                let rotated = rotateTwist(values, axes);
+                twistVizOverlays[i].setTwist(values);
+                if (currentMapping === i) {
+                  robot.move(rotated, controlFrame, event.detail.time);
+                }
+              }
+            }
+            robot.forwardButtonStates(event.detail.buttons);
+            updateLastValues(event, lastValue);
+            uiFolders["values"].refresh();
+          });
+          window.addEventListener("3dmousedisconnected", (event) => {
+            threeDMouse = null;
+            connectButton.disabled = false;
+            twistVizOverlays.forEach((overlay) => overlay.stop());
+            Object.keys(uiFolders).forEach(
+              _,
+              (folder) => (folder.disabled = true),
+            );
+          });
+
+          threeDMouse = device;
+          connectButton.disabled = true;
+          Object.values(uiFolders).forEach(
+            (folder, _) => (folder.disabled = false),
+          );
+        }),
+      );
+    });
+
+    function configureVideoView(container, ros, topic, targetPose, cameraPose) {
+      let viewContainer = container.querySelector(".view");
+      let overlayContainer = container.querySelector("canvas");
+      subscribeToCameraTopic(ros, topic, viewContainer);
+      let overlay = new TwistViz({
+        container: container,
+        canvas: overlayContainer,
+        target_position: targetPose,
+        camera_pose: cameraPose,
+        scale: 0.5,
+      });
+      return overlay;
+    }
+
+    function changeActiveVideoView(makeActiveIndex) {
+      let views = document.getElementsByClassName("view-container");
+      for (let i = 0; i < views.length; i++) {
+        if (i !== makeActiveIndex) {
+          views[i].classList.add("inactive");
+        } else {
+          views[i].classList.remove("inactive");
+        }
+      }
+    }
+  </script>
+</html>
