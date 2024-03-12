@@ -112,16 +112,16 @@
     </section>
   </body>
   <script type="module">
-    import { ThreeDMouse } from "../dist/ThreeDMouse.js";
-    import { rotateTwist } from "../dist/linAlg.js";
-    import { TwistViz } from "../dist/TwistViz.js";
-    import { Robot, subscribeToCameraTopic, initializeRos } from "./robot.js";
+    import { ThreeDMouse } from "../../dist/ThreeDMouse.js";
+    import { rotateTwist } from "../../dist/linAlg.js";
+    import { TwistViz } from "../../dist/TwistViz.js";
+    import { Robot, subscribeToCameraTopic, initializeRos } from "../robot.js";
     import * as THREE from "three";
     import {
       createConfigurationPane,
       updateLastValues,
-    } from "./configurationPane.js";
-    import { SmoothingDeadbandFilter } from "../dist/filtering.js";
+    } from "../configurationPane.js";
+    import { SmoothingDeadbandFilter } from "../../dist/filtering.js";
 
     let ros = null;
     let robot = null;
@@ -255,8 +255,9 @@
               ros.on("error", (e) => {
                 status["rosStatus"] = false;
                 status["message"] = "ROS connection error";
+                console.error(e);
               });
-              robot = new Robot(ros);
+              robot = new Robot(ros, {twistTopicName: "/servo_node/delta_twist_cmds"});
               twistVizOverlays = [];
               for (let i = 0; i < cameraMappings.length; i += 1) {
                 let {
@@ -279,6 +280,7 @@
               }
             })
             .catch((error) => {
+              console.error(error);
               status["message"] = "Error: ROS webbridge connection failed";
             });
 

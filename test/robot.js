@@ -10,19 +10,19 @@ export class Robot {
    * @param {object} ros - The ROSLIB Ros instance to connect to.
    */
 
-  constructor(ros) {
+  constructor(ros, options = {}) {
+    options = {...{twistTopicName: "/threedmouse/twist", buttonTopicName: "/threedmouse/buttons", buttonEventTopicName: "/threedmouse/button_event"}, ...options};
     this.ros = ros;
     this.twistTopic = new ROSLIB.Topic({
       ros: this.ros,
-      //name: "/threedmouse/twist",
-      name: "/servo_node/delta_twist_cmds",
+      name: options.twistTopicName,
       messageType: "geometry_msgs/msg/TwistStamped",
     });
 
     // JSON string of button state dictionary
     this.buttonsTopic = new ROSLIB.Topic({
       ros: this.ros,
-      name: "/threedmouse/buttons",
+      name: options.buttonTopicName,
       messageType: "std_msgs/msg/String",
     });
 
@@ -32,7 +32,7 @@ export class Robot {
     // So we'll string-ly type the button up/down events
     this.buttonChangeTopic = new ROSLIB.Topic({
       ros: this.ros,
-      name: "/threedmouse/button_change",
+      name: options.buttonEventTopicName,
       messageType: "std_msgs/msg/String",
     });
   }
@@ -113,23 +113,47 @@ export function initializeRos(host="ws://127.0.0.1:9090") {
  * @param {object} ros - The ROSLIB Ros instance to connect to.
  * @param {string} topicName - The name of the camera topic in ROS.
  * @param {HTMLCanvasElement} element - The canvas element to render the images on.
+ * @param {boolean} [compressed=null] - Whether the camera topic is compressed. If not provided, the function will attempt to determine this from the topic name.
  */
 
-export function subscribeToCameraTopic(ros, topicName, element) {
-  const imageTopic = new ROSLIB.Topic({
-    ros: ros,
-    name: topicName,
-    messageType: "sensor_msgs/msg/Image",
-  });
-  let ctx = element.getContext("2d");
-  imageTopic.subscribe(function (message) {
-    element.width = message.width;
-    element.height = message.height;
-    let imageData = ctx.createImageData(message.width, message.height);
-    imageData = rgb8ImageToImageData(message, imageData);
-    // Iterate through every pixel
-    ctx.putImageData(imageData, 0, 0);
-  });
+export function subscribeToCameraTopic(ros, topicName, element, compressed=null) {
+  if (compressed === null) {
+    compressed = topicName.endsWith("compressed");
+  }
+
+  if (compressed) {
+    const imageTopic = new ROSLIB.Topic({
+      ros: ros,
+      name: topicName,
+      messageType: "sensor_msgs/msg/CompressedImage",
+    });
+    let ctx = element.getContext("2d");
+    imageTopic.subscribe(function (message) {
+      let img = new Image();
+      img.onload = function () {
+        element.width = img.width;
+        element.height = img.height;
+        ctx.drawImage(img, 0, 0);
+      };
+      img.src = "data:image/jpeg;base64," + message.data;
+    });
+    return;
+  } else {
+    const imageTopic = new ROSLIB.Topic({
+      ros: ros,
+      name: topicName,
+      messageType: "sensor_msgs/msg/Image",
+    });
+    let ctx = element.getContext("2d");
+    imageTopic.subscribe(function (message) {
+      element.width = message.width;
+      element.height = message.height;
+      let imageData = ctx.createImageData(message.width, message.height);
+      imageData = rgb8ImageToImageData(message, imageData);
+      // Iterate through every pixel
+      ctx.putImageData(imageData, 0, 0);
+    });
+  }
 }
 
 /**

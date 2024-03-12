@@ -26,11 +26,11 @@ No build steps are required to run our included demos. Simply run a server using
 
     npm run test
 
-Open localhost:8000/test in Chrome. Note WebHID is typically only available in HTTPS contexts.
+Open localhost:8000/test/viz in Chrome. Note WebHID is typically only available in HTTPS contexts.
 
 #### Playing with the Visualization and Filters
 
-You can test out the twist visualization using `viz_test.html` by opening `http://localhost:8000/test/viz_test.html`.
+You can test out the twist visualization using `test/viz/index.html` by opening `http://localhost:8000/test/viz`.
 
 #### Testing with a Simulated UR5
 
@@ -40,13 +40,13 @@ We include a ROS2 Humble robot simulation to enable testing without a robot. You
 
 Our main launch file calls launch files [created by Universal Robotics](https://github.com/UniversalRobots/Universal_Robots_ROS2_Gazebo_Simulation) for placing their robot model in a Gazebo simulation, and also homes the robot and configures camera views:
 
-    cd 3dmouse-hid/test/ros && ros2 launch ur_teleop_sim.launch.py
+    cd 3dmouse-hid/test/ur_sim_ros && ros2 launch ur_teleop_sim.launch.py
 
 You should see two instances of RViz launch (which you may close). [MoveIt 2 Servo](https://moveit.picknik.ai/humble/doc/examples/realtime_servo/realtime_servo_tutorial.html), the package which provides the end-effector twist controller, will be initialized and activated in the final step of the launch file, after which you can confirm that servo is running:
 
     ros2 topic pub /servo_node/delta_twist_cmds geometry_msgs/msg/TwistStamped "{ header: { stamp: 'now', 'frame_id': 'tool0' },  twist: {linear: {x: -0.1}, angular: {  }}}" -r 10
 
-Now you should be able to open `http://localhost:8000/test/` and follow the interface instructions to teleoperate the simulated robot.
+Now you should be able to open `http://localhost:8000/test/ur_sim_ros` and follow the interface instructions to teleoperate the simulated robot.
 
 ### Debugging WebHID Issues
 
