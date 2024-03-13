@@ -14,6 +14,7 @@ Using (Ubuntu) Linux, in order to get access from user space, add the following,
 
 ```
 SUBSYSTEM=="hidraw", ATTRS{idVendor}=="046d", MODE:="0666", GROUP="input"
+SUBSYSTEM=="hidraw", ATTRS{idVendor}=="256f", MODE="0666", GROUP="input"
 ```
 
 And run `sudo udevadm control --reload-rules && sudo udevadm trigger`
