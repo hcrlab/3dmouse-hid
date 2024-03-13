@@ -17,11 +17,11 @@ export function createConfigurationPane({
   hostParam: hostParam,
   filter: filter,
   filterParams: filterParams,
-  lastValue: lastValue,
+  lastValue: lastValue
 }) {
   const pane = new Pane({ container: container });
   let connectButton = pane.addButton({
-    title: "Connect 3D Mouse",
+    title: "Connect to 3D Mouse",
     disabled: false,
   });
   if (status) {
@@ -32,7 +32,7 @@ export function createConfigurationPane({
     });
     // Allow user to point to a roslibjs websocket of their choice
     if (hostParam) {
-      pane.addBinding(hostParam, "host", { label: "Host" });
+      pane.addBinding(hostParam, "host", { label: "ROS Host" });
     }
     for (let key of Object.keys(status)) {
       if (key === "message") continue;

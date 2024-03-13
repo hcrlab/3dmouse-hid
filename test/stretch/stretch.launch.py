@@ -2,10 +2,8 @@ import os
 import fnmatch
 import stretch_body.robot_params
 
-from ament_index_python import get_package_share_directory
 from launch import LaunchDescription
 from launch.actions import DeclareLaunchArgument, IncludeLaunchDescription, GroupAction, ExecuteProcess
-from launch.conditions import IfCondition, UnlessCondition, LaunchConfigurationNotEquals
 from launch.launch_description_sources import PythonLaunchDescriptionSource, FrontendLaunchDescriptionSource
 from launch.substitutions import LaunchConfiguration, PathJoinSubstitution, FindExecutable, OrSubstitution, AndSubstitution, NotSubstitution
 from launch.substitutions import ThisLaunchFileDir
@@ -259,6 +257,12 @@ def generate_launch_description():
                 ]
             ],
             shell=True,
+        )
+    )
+    ld.add_action(
+        Node(
+            executable='./stretch_twist_controller.py',
+            name='twist_controller'
         )
     )
     return ld

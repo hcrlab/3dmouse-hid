@@ -14,7 +14,8 @@ export class TwistViz {
    * @param {HTMLElement} params.container - HTML container for the 3D visualization.
    * @param {HTMLCanvasElement} params.canvas - Canvas for rendering the 3D visualization.
    * @param {THREE.Vector3} params.targetPosition - The target point for the camera
-   * @param {THREE.Matrix4} params.camera_pose - Initial camera pose for the view.
+   * @param {THREE.Matrix4} params.camera_pose - Where the camera is with respect to the marker. It's often best to set this 
+   *                                             to reflect the physical camera's pose with respect to what is being controlled.
    * @param {number} params.scale - Percentage of container size to occupy
    */
 

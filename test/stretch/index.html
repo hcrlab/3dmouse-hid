@@ -168,50 +168,66 @@
         axes: new THREE.Matrix3(0, -1, 0, 1, 0, 0, 0, 0, 1),
         control_frame: "base_link",
         camera_pose: new THREE.Matrix4(
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          -5,
-          0,
-          0,
-          1,
-          2,
-          0,
-          0,
-          0,
-          1,
+          1, 0, 0, 0, 
+          0, 1, 0, -1, 
+          0, 0, 1, 5, 
+          0, 0, 0, 1,
         ),
         target_position: new THREE.Vector3(0, 0, 0),
       },
       {
         topic: "/gripper_camera/color/image_rect_raw/compressed",
-        axes: new THREE.Matrix3(0, 1, 0, -1, 0, 0, 0, 0, 1),
+        axes: new THREE.Matrix3(0, -1, 0, 1, 0, 0, 0, 0, 1),
         control_frame: "base_link",
         camera_pose: new THREE.Matrix4(
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          -0.0001,
-          0,
-          0,
-          1,
-          5,
-          0,
-          0,
-          0,
-          1,
+          1, 0, 0, 0,
+          0, 1, 0, -3,
+          0, 0, 1, 2, 
+          0, 0, 0, 1,
         ),
         target_position: new THREE.Vector3(0, 0, 0),
       },
     ];
+
+    function addManualButtonControls(pane) {
+      const manualButtons = pane.addFolder({
+        title: "Buttons",
+        disabled: false,
+        expanded: true,
+      });
+
+      const folder = manualButtons
+      let currentTimeoutHandle = null;
+      // Tweakpane doesn't support mouseup/down, so we imitate
+      // holding the button down for a short time.
+      let leftButton = folder.addButton({
+        title: "Close Gripper (Left)"}).on("click", () => {
+          leftButton.disabled = true;
+          robot.forwardButtonChange("LEFT", "down");
+          currentTimeoutHandle = setTimeout(() => {
+            leftButton.disabled = false;
+            robot.forwardButtonChange("LEFT", "up");
+          }, 300);
+        })
+      let rightButton = folder.addButton({
+        title: "Open Gripper (Right)"}).on("click", () => {
+          rightButton.disabled = true;
+          robot.forwardButtonChange("RIGHT", "down");
+          currentTimeoutHandle = setTimeout(() => {
+            rightButton.disabled = false;
+            robot.forwardButtonChange("RIGHT", "up");
+          }, 300);
+        })
+      let homeButton = folder.addButton({
+        title: "Home Gripper (FIT)"}).on("click", () => {
+          rightButton.disabled = true;
+          robot.forwardButtonChange("FIT", "down");
+          currentTimeoutHandle = setTimeout(() => {
+            rightButton.disabled = false;
+            robot.forwardButtonChange("FIT", "up");
+          }, 300);
+        })
+    }
 
     window.addEventListener("DOMContentLoaded", (_) => {
       instructionsContainer = document.getElementById("usage-information");
@@ -227,10 +243,11 @@
         filterParams: filterParams,
         lastValue: lastValue,
       });
+
       pane = ui["pane"];
       let connectButton = ui["connectButton"];
       let uiFolders = ui["folders"];
-
+      uiFolders["buttons"] = addManualButtonControls(pane);
       // Check if WebHID is available before going further.
       if (!navigator.hid) {
         status["message"] =
@@ -280,6 +297,7 @@
             })
             .catch((error) => {
               status["message"] = "Error: ROS webbridge connection failed";
+              console.log(error);
             });
 
           window.addEventListener("3dmousebuttonup", (event) => {

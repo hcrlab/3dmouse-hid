@@ -26,11 +26,22 @@ No build steps are required to run our included demos. Simply run a server using
 
     npm run test
 
-Open localhost:8000/test/viz in Chrome. Note WebHID is typically only available in HTTPS contexts.
+Open `localhost:8000/test/viz` in Chrome. Note WebHID is typically only available in HTTPS contexts.
 
-#### Playing with the Visualization and Filters
+#### Visualization and Filters (No Robot)
 
 You can test out the twist visualization using `test/viz/index.html` by opening `http://localhost:8000/test/viz`.
+
+#### Stretch RE2 or SE3
+
+Make sure the robot is homed (run `stretch_robot_home.py` from a robot shell). Ensure that no other processes are using the `stretch_body` interface (use `stretch_free_robot_process.py`). Then launch the robot controller and cameras using:
+
+    cd 3dmouse-hid/test/stretch && ros2 launch stretch.launch.py
+
+
+Now in the interface at `localhost:8000/test/stretch`, you will need to specify your robot's hostname or IP address. Click connect
+
+We've tested the demo using RE2 and SE3 running Ubuntu 20.04 and ROS2 Humble. 
 
 #### Testing with a Simulated UR5
 
