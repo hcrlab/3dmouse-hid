@@ -1,49 +1,45 @@
-import time
+import logging
 import threading
+import time
 from typing import Optional
 
-from threed_mouse.device import DeviceSpec, SpaceMouseData
-from threed_mouse.buttons import ButtonState, ButtonStateStruct, DEVICE_BUTTON_STRUCT_INDICES
-
 import numpy as np
-import logging
+import pyspacemouse
+from pyspacemouse import DeviceInfo
+
+from threed_mouse.device import SpaceMouseData
 
 logger = logging.getLogger(__name__)
 
-# control rate (in hz) - try to enforce this rate of control for reading from the device and sending commands
+# Control rate (Hz) for reading from the device in the background thread.
 TELEOP_CONTROL_RATE = 20
 
 
-def scale_to_control(x: float, axis_scale: float):
-    x = x / axis_scale
-    x = min(max(x, -1.0), 1.0)
-    return x
-
-
-def convert(b1, b2, axis_scale: float):
-    as_int16 = int.from_bytes([b1,b2], "little", signed=True)
-    return scale_to_control(as_int16, axis_scale)
-
-
 class SpaceMouse:
-    def __init__(self, spec: DeviceSpec, control_rate=TELEOP_CONTROL_RATE):
+    def __init__(
+        self,
+        spec: Optional[DeviceInfo] = None,
+        control_rate=TELEOP_CONTROL_RATE,
+        device: Optional[str] = None,
+        device_index: int = 0,
+    ):
+        # If both are provided, explicit device name wins.
+        self.name = device if device is not None else (spec.name if spec is not None else None)
+        self._control_rate = control_rate
+        self._device_index = device_index
 
-        # Note: these can be found using `hid.enumerate()`
-        self.hid_ids = spec.hid_ids
-        self.mappings = spec.mappings
-        self.button_mapping = spec.button_mapping
-        self.axis_scale = spec.axis_scale
-        self.name = spec.name
-        self._control = None
-        self.device = None
-
-        # Optional delegate functions that will be called to process/transform position and rotation
-        # signal before it is passed out to consumers.
+        # Optional delegate functions that process position/rotation before
+        # data is surfaced to callers.
         self._position_callback = None
         self._rotation_callback = None
         self._unexpected_close_callback = None
-        self._control_rate = control_rate
 
+        self._control: Optional[SpaceMouseData] = None
+        self._control_lock = threading.Lock()
+        self._frame_rotation_linear = np.eye(3, dtype=float)
+        self._frame_rotation_angular = np.eye(3, dtype=float)
+
+        self.device = None
         self.thread = None
         self._stop_event = threading.Event()
 
@@ -54,107 +50,109 @@ class SpaceMouse:
             self.device.close()
 
     def set_position_callback(self, callback):
-        """
-        Set a function that will get called to process the raw translation
-        readings from the spacemouse. This is useful to remap which direction
-        moves which axis (e.g. pushing right moves +y instead of + x). Callback
-        should take a single argument (3-dim numpy array for translation) and
-        return a 3-dim array as well
-        """
         self._position_callback = callback
 
     def set_rotation_callback(self, callback):
-        """
-        Set a function that will get called to process the raw RPY readings from the
-        spacemouse, before forming an absolute rotation. Callback should take
-        3 arguments - roll, pitch, yaw, and return roll, pitch, yaw. This is useful
-        for re-mapping the device knob twists to different RPY settings.
-        """
         self._rotation_callback = callback
 
     def set_unexpected_close_callback(self, callback):
         self._unexpected_close_callback = callback
 
-    def get_controller_state(self) -> Optional[SpaceMouseData]:
-        """
-        Returns the current state of the 3d mouse, a dictionary of pos, orn, and button on/off.
-        """
-        # Get a copy of the latest data
-        control = self._control
-        if control is None:
-            # The caller must've beaten the actual device thread. No state to give them yet.
-            return None
-        dpos = np.array(control.xyz)
-        rot = np.array(control.rpy)
+    def _validate_frame_rotation(
+        self,
+        rotation: np.ndarray,
+        *,
+        require_right_handed: bool,
+    ) -> np.ndarray:
+        r = np.asarray(rotation, dtype=float)
+        if r.shape != (3, 3):
+            raise ValueError("rotation must have shape (3, 3)")
 
-        # handle callbacks
+        if not np.allclose(r.T @ r, np.eye(3), atol=1e-6):
+            raise ValueError("rotation must be orthonormal (R.T @ R == I)")
+
+        if require_right_handed:
+            det = np.linalg.det(r)
+            if not np.isclose(det, 1.0, atol=1e-6):
+                raise ValueError("rotation must be right-handed (det(R) == +1)")
+
+        return r
+
+    def set_frame_rotation(self, rotation: np.ndarray) -> None:
+        """Set one frame matrix for both translation and rotation."""
+        r = self._validate_frame_rotation(rotation, require_right_handed=True)
+        with self._control_lock:
+            self._frame_rotation_linear = r
+            self._frame_rotation_angular = r
+
+    def set_frame_rotations(
+        self,
+        linear_rotation: np.ndarray,
+        angular_rotation: np.ndarray,
+        *,
+        allow_angular_reflection: bool = True,
+    ) -> None:
+        """Set separate frame matrices for translation and rotation.
+
+        `linear_rotation` is required to be a proper rotation (det=+1).
+        `angular_rotation` can optionally allow det=-1 for device quirks.
+        """
+        r_linear = self._validate_frame_rotation(
+            linear_rotation,
+            require_right_handed=True,
+        )
+        r_angular = self._validate_frame_rotation(
+            angular_rotation,
+            require_right_handed=not allow_angular_reflection,
+        )
+        with self._control_lock:
+            self._frame_rotation_linear = r_linear
+            self._frame_rotation_angular = r_angular
+
+    def get_controller_state(self) -> Optional[SpaceMouseData]:
+        with self._control_lock:
+            control = self._control
+        if control is None:
+            return None
+
+        dpos = np.array(control.xyz, dtype=float)
+        rot = np.array(control.rpy, dtype=float)
+
         if self._position_callback is not None:
             self._position_callback(dpos)
-
         if self._rotation_callback is not None:
             self._rotation_callback(rot)
 
-        return SpaceMouseData(control.t, dpos, rot, control.buttons)
-
-    def get_button_state(self) -> Optional[ButtonStateStruct]:
-        control = self._control
-        if control is None:
-            return None
-        return ButtonStateStruct(control[3], DEVICE_BUTTON_STRUCT_INDICES[self.name])
+        buttons = np.asarray(control.buttons, dtype=int).copy()
+        return SpaceMouseData(control.t, dpos, rot, buttons)
 
     @property
     def is_running(self) -> bool:
         return self.thread is not None
 
     def run(self):
-        import hid
         if self.thread:
             return
 
-        opened = False
-        for vendor_id, product_id in self.hid_ids:
-            # Some devices have alternate identifiers. Loop through trying all of them
-            try:
-                # The source for the hid module is a good reference:
-                # https://github.com/trezor/cython-hidapi/blob/master/hid.pyx
-                if hasattr(hid, "device") and callable(hid.device):
-                    self.device = hid.device()
-                    # self.device.open_path(bytes("/dev/spacemouse", "UTF-8"))
-                    self.device.open(vendor_id, product_id)
-                else:
-                    # Newer hid package exposes Device and opens in constructor.
-                    self.device = hid.Device(vendor_id, product_id)
-                opened = True
-                logger.info(f"Successfully connected to: {self.name}, vendor id: {vendor_id}, product id: {product_id}")
-                break
-            except Exception:
-                if self.device is not None:
-                    self.device.close()
-                self.device = None
-                continue
+        try:
+            self.device = pyspacemouse.open(
+                device=self.name,
+                device_index=self._device_index,
+                nonblocking=True,
+            )
+            # Capture resolved device name after pyspacemouse autodiscovery.
+            self.name = self.device.name
+        except Exception as e:
+            logger.error("Unable to open SpaceMouse '%s': %s", self.name, e)
+            raise RuntimeError("Couldn't open device") from e
 
-        if not opened:
-            logger.error("Unable to open specified spacemouse device. Ensure you have installed spacenavd, obtained the correct vendor_id and product_id, as well as setting up the correct udev rule and the device is plugged in.")
-            raise RuntimeError("Couldn't open device")
-        # We'll use the blocking interface and rely on the timeout feature instead
-        # self.device.set_nonblocking(True)
-
-        # launch daemon thread to listen to SpaceNav
-        self.thread = threading.Thread(target=self._run_loop)
-        self.thread.daemon = True
+        self.thread = threading.Thread(target=self._run_loop, daemon=True)
         self.thread.start()
 
     def __str__(self) -> str:
         if self.device is None:
             return "No connected SpaceMouse device."
-        manufacturer = getattr(self.device, "get_manufacturer_string", None)
-        product = getattr(self.device, "get_product_string", None)
-        if callable(manufacturer) and callable(product):
-            return f"Manufacturer: {manufacturer()}\n Product: {product()}"
-        return (
-            f"Manufacturer: {getattr(self.device, 'manufacturer', 'unknown')}\n"
-            f" Product: {getattr(self.device, 'product', 'unknown')}"
-        )
+        return self.device.describe_connection()
 
     def stop(self):
         if not self.is_running:
@@ -169,64 +167,48 @@ class SpaceMouse:
         self.stop()
         if self.device is not None:
             self.device.close()
+            self.device = None
 
     def _run_loop(self):
-        def state_to_tuple(state):
-            return SpaceMouseData(state["t"], np.array((state['x'], state['y'], state['z'])), np.array((state['r'], state['p'], state['ya'])), int(state["buttons"]))
-        working_state = {
-            "t": -1,
-            "x": 0.,
-            "y": 0.,
-            "z": 0.,
-            "r": 0.,
-            "p": 0.,
-            "ya": 0.,
-            "buttons": ButtonState([0] * len(self.button_mapping)),
-            "buttons_changed": False,
-            "xyz_rpy_change_count": 0,
-        }
-        self._control = state_to_tuple(working_state)
+        last_t = None
+        sleep_s = max(0.001, 1.0 / float(self._control_rate))
+
+        # Initialize with a neutral state so consumers can poll immediately.
+        with self._control_lock:
+            self._control = SpaceMouseData(
+                -1.0,
+                np.array((0.0, 0.0, 0.0), dtype=float),
+                np.array((0.0, 0.0, 0.0), dtype=float),
+                np.zeros((0,), dtype=int),
+            )
+
         while not self._stop_event.is_set():
             try:
-                d = self.device.read(13, int(1000 / self._control_rate))
-            except OSError as e:
-                # This usually means the device was unplugged
+                state = self.device.read()
+            except Exception:
                 logger.warning("Lost connection to SpaceMouse. Closing device.")
-                self.device.close()
-
+                if self.device is not None:
+                    self.device.close()
+                    self.device = None
                 if self._unexpected_close_callback:
                     self._unexpected_close_callback()
                 self.thread = None
                 break
-            if d is not None and len(d) > 0:
-                self.process(d, working_state)
-                if working_state["xyz_rpy_change_count"] == 2 or working_state["buttons_changed"]:
-                    self._control = state_to_tuple(working_state)
-                    working_state["xyz_rpy_change_count"] = 0
 
-    def process(self, data, state):
-        """
-        Update the state based on the incoming data
-        This function updates state, giving values for each
-        axis [x,y,z,roll,pitch,yaw] in range [-1.0, 1.0]
-        The timestamp (in fractional seconds since the start of the program)  is written as element "t"
-        """
-
-        for name, (chan, b1, b2, flip) in self.mappings.items():
-            if data[0] == chan:
-                state[name] = (
-                    flip * convert(data[b1], data[b2], self.axis_scale)
+            if state.t != last_t:
+                last_t = state.t
+                with self._control_lock:
+                    r_linear = self._frame_rotation_linear.copy()
+                    r_angular = self._frame_rotation_angular.copy()
+                xyz = r_linear @ np.array((state.x, state.y, state.z), dtype=float)
+                rpy = r_angular @ np.array((state.roll, state.pitch, state.yaw), dtype=float)
+                control = SpaceMouseData(
+                    state.t,
+                    xyz,
+                    rpy,
+                    np.asarray(state.buttons, dtype=int),
                 )
-                if name == "r" or name == "x":
-                    state["xyz_rpy_change_count"] += 1
+                with self._control_lock:
+                    self._control = control
 
-        for button_index, (_, chan, byte, bit) in enumerate(self.button_mapping):
-            if data[0] == chan:
-                state["buttons_changed"] = True
-                # update the button vector
-                mask = 1 << bit
-                state["buttons"][button_index] = (
-                    1 if (data[byte] & mask) != 0 else 0
-                )
-
-        state["t"] = time.time()
+            time.sleep(sleep_s)

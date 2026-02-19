@@ -1,39 +1,6 @@
-from typing import Union, Set, Dict
+from typing import Union, Set, Dict, Sequence
 import time
-
-from threed_mouse.device import DEVICE_SPECS
-
-
-DEVICE_BUTTON_STRUCT_INDICES: Dict[str, Dict[str, int]] = {}
-
-for device_name, spec in DEVICE_SPECS.items():
-    # We use the order that the buttons are listed in the spec to define the packing arrangement for a bitfield representation
-    # of button state.
-    DEVICE_BUTTON_STRUCT_INDICES[device_name] = {name: index for index, (name, _, _, _) in enumerate(spec.button_mapping)}
-
-
-class ButtonState(list):
-    def __int__(self):
-        # Button state is a list of bools, so convert to a compact int bitfield representation
-        return sum((b << i) for (i, b) in enumerate(self))
-
-
-class ButtonStateStruct:
-    def __init__(self, value: int, name_to_index: Dict[str, int]):
-        """
-        Args:
-            value (int): the packed bitfield representation of the button state
-            mapping (List[str]): name of each index in the bitfield
-        """
-        self.value = value
-        self.name_to_index = name_to_index
-
-    def __getitem__(self, name: str) -> bool:
-        if name not in self.name_to_index.keys():
-            return False
-        index = self.name_to_index[name]
-        return (self.value >> index) & 1
-
+import numpy as np
 
 class SpaceMouseButtonDebouncer:
     """ Limit the number of times a change in state of the SpaceMouse's buttons is reported
@@ -66,56 +33,54 @@ class SpaceMouseButtonDebouncer:
         else:
             self.trailing = -1 if self._trailing_preference else 0
 
-        self.ignore = (~self.leading & ~self.trailing)
-
-        self._last_change_per_field = [float('-inf') for _ in range(self.num_inputs)]
-
-        self._last_value = 0
-        self._debounced_value = 0
+        self.ignore = (~self.leading & ~self.trailing) & ((1 << self.num_inputs) - 1)
+        self._last_change_per_field = [float("-inf") for _ in range(self.num_inputs)]
+        self._debounced_state = np.zeros(self.num_inputs, dtype=int)
         self._last_update_timestamp = None
 
-    def update(self, current_button_state: int):
-        """ Pass in the latest available value, get back processed button states.
+    def update(self, current_button_state: Sequence[int] | np.ndarray | None) -> np.ndarray:
+        """Pass in raw button states, get debounced raw button states.
 
         Args:
-            current_button_state (ButtonStateStruct): _description_
-
-        Returns:
-            _type_: _description_
+            current_button_state: Sequence of 0/1 (or bool) button values.
         """
         if current_button_state is not None:
-            new_value = current_button_state
+            desired_state = np.asarray(current_button_state, dtype=int).reshape(-1)
+            if desired_state.size < self.num_inputs:
+                desired_state = np.pad(
+                    desired_state,
+                    (0, self.num_inputs - desired_state.size),
+                    mode="constant",
+                )
+            elif desired_state.size > self.num_inputs:
+                desired_state = desired_state[: self.num_inputs]
+            desired_state = (desired_state != 0).astype(int)
         else:
-            # Interpret the absence of a new reading as a repeat of the old value
-            new_value = self._last_value
+            desired_state = self._debounced_state.copy()
 
-        # Which bits flipped
-        changed = self._last_value ^ new_value
-        rising = changed & new_value
-        falling = changed & ~new_value
-        should_notify = 0
-        passthrough = self.ignore
         current_stamp = time.time()
         for i in range(self.num_inputs):
-            mask = (1 << i)
-            # User didn't ask for leading or trailing on these bits
-            if self.ignore & mask:
+            desired = int(desired_state[i])
+            current = int(self._debounced_state[i])
+            if desired == current:
                 continue
-            field_changed = (changed >> i) & 1
-            last_change_stamp = self._last_change_per_field[i]
-            value_stale = current_stamp - last_change_stamp > self.max_wait
-            if field_changed and value_stale:
-                # It's been long enough since the last change that we need to report this change
-                should_notify |= mask
+
+            mask = (1 << i)
+            if desired == 1:
+                edge_allowed = bool(self.leading & mask)
+            else:
+                edge_allowed = bool(self.trailing & mask)
+
+            if self.ignore & mask:
+                edge_allowed = True
+
+            if not edge_allowed:
+                continue
+
+            value_stale = (current_stamp - self._last_change_per_field[i]) > self.max_wait
+            if value_stale:
+                self._debounced_state[i] = desired
                 self._last_change_per_field[i] = current_stamp
 
-        # Check whether they wanted to know about the kind of change that happened
-        should_notify &= (rising & self.leading) | (falling & self.trailing)
-        # Apply changes, but mask to those that we determined aren't spurious high frequency input via timestamp
-        self._debounced_value = (should_notify & changed)
-        # Passthrough bits that we aren't debouncing
-        self._debounced_value = (~passthrough & self._debounced_value) | (passthrough & new_value)
-        self._last_value = new_value
         self._last_update_timestamp = current_stamp
-        # print(f"{changed} {should_notify} {self._debounced_value}")
-        return ButtonStateStruct(self._debounced_value, self._current_device_map)
+        return self._debounced_state.copy()
