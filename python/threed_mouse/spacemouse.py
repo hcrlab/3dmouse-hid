@@ -2,11 +2,13 @@ import time
 import threading
 from typing import Optional
 
-from srl.spacemouse.device import DeviceSpec, SpaceMouseData
-from srl.spacemouse.buttons import ButtonState, ButtonStateStruct, DEVICE_BUTTON_STRUCT_INDICES
+from threed_mouse.device import DeviceSpec, SpaceMouseData
+from threed_mouse.buttons import ButtonState, ButtonStateStruct, DEVICE_BUTTON_STRUCT_INDICES
 
 import numpy as np
-import carb
+import logging
+
+logger = logging.getLogger(__name__)
 
 # control rate (in hz) - try to enforce this rate of control for reading from the device and sending commands
 TELEOP_CONTROL_RATE = 20
@@ -118,7 +120,7 @@ class SpaceMouse:
                 # self.device.open_path(bytes("/dev/spacemouse", "UTF-8"))
                 self.device.open(vendor_id, product_id)
                 opened = True
-                carb.log_info(f"Successfully connected to: {self.name}, vendor id: { vendor_id }, product id: {product_id}")
+                logger.info(f"Successfully connected to: {self.name}, vendor id: {vendor_id}, product id: {product_id}")
                 break
             except OSError as e:
                 self.device.close()
@@ -126,7 +128,7 @@ class SpaceMouse:
                 continue
 
         if not opened:
-            carb.log_error("Unable to open specified spacemouse device. Ensure you have installed spacenavd, obtained the correct vendor_id and product_id, as well as setting up the correct udev rule and the device is plugged in. ")
+            logger.error("Unable to open specified spacemouse device. Ensure you have installed spacenavd, obtained the correct vendor_id and product_id, as well as setting up the correct udev rule and the device is plugged in.")
             raise RuntimeError("Couldn't open device")
         # We'll use the blocking interface and rely on the timeout feature instead
         # self.device.set_nonblocking(True)
@@ -173,7 +175,7 @@ class SpaceMouse:
                 d = self.device.read(13, timeout_ms=1000 / self._control_rate)
             except OSError as e:
                 # This usually means the device was unplugged
-                carb.log_warn("Lost connection to SpaceMouse. Closing device.")
+                logger.warning("Lost connection to SpaceMouse. Closing device.")
                 self.device.close()
 
                 if self._unexpected_close_callback:
