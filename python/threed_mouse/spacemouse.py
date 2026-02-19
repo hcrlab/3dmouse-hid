@@ -35,6 +35,7 @@ class SpaceMouse:
         self.axis_scale = spec.axis_scale
         self.name = spec.name
         self._control = None
+        self.device = None
 
         # Optional delegate functions that will be called to process/transform position and rotation
         # signal before it is passed out to consumers.
@@ -116,14 +117,19 @@ class SpaceMouse:
             try:
                 # The source for the hid module is a good reference:
                 # https://github.com/trezor/cython-hidapi/blob/master/hid.pyx
-                self.device = hid.device()
-                # self.device.open_path(bytes("/dev/spacemouse", "UTF-8"))
-                self.device.open(vendor_id, product_id)
+                if hasattr(hid, "device") and callable(hid.device):
+                    self.device = hid.device()
+                    # self.device.open_path(bytes("/dev/spacemouse", "UTF-8"))
+                    self.device.open(vendor_id, product_id)
+                else:
+                    # Newer hid package exposes Device and opens in constructor.
+                    self.device = hid.Device(vendor_id, product_id)
                 opened = True
                 logger.info(f"Successfully connected to: {self.name}, vendor id: {vendor_id}, product id: {product_id}")
                 break
-            except OSError as e:
-                self.device.close()
+            except Exception:
+                if self.device is not None:
+                    self.device.close()
                 self.device = None
                 continue
 
@@ -139,7 +145,16 @@ class SpaceMouse:
         self.thread.start()
 
     def __str__(self) -> str:
-        return f"Manufacturer: {self.device.get_manufacturer_string()}\n Product: {self.device.get_product_string()}"
+        if self.device is None:
+            return "No connected SpaceMouse device."
+        manufacturer = getattr(self.device, "get_manufacturer_string", None)
+        product = getattr(self.device, "get_product_string", None)
+        if callable(manufacturer) and callable(product):
+            return f"Manufacturer: {manufacturer()}\n Product: {product()}"
+        return (
+            f"Manufacturer: {getattr(self.device, 'manufacturer', 'unknown')}\n"
+            f" Product: {getattr(self.device, 'product', 'unknown')}"
+        )
 
     def stop(self):
         if not self.is_running:
@@ -152,7 +167,8 @@ class SpaceMouse:
 
     def close(self):
         self.stop()
-        self.device.close()
+        if self.device is not None:
+            self.device.close()
 
     def _run_loop(self):
         def state_to_tuple(state):
@@ -172,7 +188,7 @@ class SpaceMouse:
         self._control = state_to_tuple(working_state)
         while not self._stop_event.is_set():
             try:
-                d = self.device.read(13, timeout_ms=1000 / self._control_rate)
+                d = self.device.read(13, int(1000 / self._control_rate))
             except OSError as e:
                 # This usually means the device was unplugged
                 logger.warning("Lost connection to SpaceMouse. Closing device.")
