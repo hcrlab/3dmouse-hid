@@ -6,7 +6,7 @@ Originally forked from [webhid-space](https://github.com/larsgk/webhid-space), w
 
 ## Usage
 
-We have tested this code under Ubuntu 22.04. Note that WebHID is only [supported by Chrome and Edge](https://caniuse.com/?search=webhid) as of October 2023. You may experience issues using WebHID with Chromium in recent Ubuntu releases due to Snap isolation.
+We have tested this code under Ubuntu 22.04 and Ubuntu 24.04. Note that WebHID is only [supported by Chrome and Edge](https://caniuse.com/?search=webhid) as of February 2026. You may experience issues using WebHID with Chromium in recent Ubuntu releases due to Snap isolation.
 
 ### Connecting a 3D Mouse
 
