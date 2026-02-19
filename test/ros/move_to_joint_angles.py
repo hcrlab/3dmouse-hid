@@ -17,12 +17,19 @@ def main(args=None):
     args = parser.parse_args()
     try:
         node = rclpy.create_node("move_to_joint_angles")
-        action_client = ActionClient(
-            node,
-            FollowJointTrajectory,
+        # Jazzy defaults to scaled controller.
+        action_topics = [
             "/joint_trajectory_controller/follow_joint_trajectory",
-        )
-        if not action_client.wait_for_server(timeout_sec=10.0):
+            "/scaled_joint_trajectory_controller/follow_joint_trajectory",
+        ]
+        action_client = None
+        for action_topic in action_topics:
+            candidate = ActionClient(node, FollowJointTrajectory, action_topic)
+            if candidate.wait_for_server(timeout_sec=5.0):
+                action_client = candidate
+                node.get_logger().info(f"Using action server: {action_topic}")
+                break
+        if action_client is None:
             node.get_logger().error("Action server not available")
             return
 

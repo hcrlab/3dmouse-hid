@@ -254,6 +254,15 @@
                 status["message"] = "ROS connection error";
               });
               robot = new Robot(ros);
+              robot
+                .configureServoForTwist()
+                .then((result) => {
+                  if (result?.warnings?.length) {
+                    status["message"] = `Servo ready (with warnings: ${result.warnings.join(", ")})`;
+                  } else {
+                    status["message"] = "Servo ready";
+                  }
+                });
               twistVizOverlays = [];
               for (let i = 0; i < cameraMappings.length; i += 1) {
                 let {

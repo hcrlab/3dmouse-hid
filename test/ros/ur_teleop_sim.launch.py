@@ -21,7 +21,6 @@ def generate_launch_description():
     ur_gazebo_sim = IncludeLaunchDescription(
         PythonLaunchDescriptionSource(["ur_sim_moveit.launch.py"]),
         launch_arguments={
-            "launch_rviz": "false",
             "gazebo_gui": gazebo_gui,
             "world_file": world_file,
         }.items(),
@@ -31,16 +30,6 @@ def generate_launch_description():
         executable="rosbridge_websocket",
         name="rosbridge_websocket",
         condition=IfCondition(start_rosbridge),
-    )
-    enable_servo = ExecuteProcess(
-        cmd=[
-            FindExecutable(name="ros2"),
-            "service",
-            "call",
-            "/servo_node/start_servo",
-            "std_srvs/srv/Trigger",
-        ],
-        shell=True,
     )
     spawn_cameras = ExecuteProcess(
         cmd=[
@@ -77,24 +66,20 @@ def generate_launch_description():
     )
     load_controller = ExecuteProcess(
         cmd=[
-            FindExecutable(name="ros2"),
-            "control",
-            "load_controller",
-            "--set-state",
-            "configured",
-            "forward_position_controller",
+            "bash",
+            "-lc",
+            "ros2 control load_controller --set-state inactive forward_position_controller || true",
         ],
         output="screen",
     )
     swap_controllers = ExecuteProcess(
         cmd=[
-            FindExecutable(name="ros2"),
-            "control",
-            "switch_controllers",
-            "--deactivate",
-            "joint_trajectory_controller",
-            "--activate",
-            "forward_position_controller",
+            "bash",
+            "-lc",
+            "ros2 control switch_controllers --deactivate joint_trajectory_controller || true && "
+            "ros2 control switch_controllers --deactivate scaled_joint_trajectory_controller || true && "
+            "sleep 1 && "
+            "ros2 control switch_controllers --activate forward_position_controller || true",
         ],
         output="screen",
     )
@@ -120,5 +105,4 @@ def generate_launch_description():
         TimerAction(period=10.0, actions=[move_to_home_pose, spawn_cameras]),
         RegisterEventHandler(OnProcessExit(target_action=move_to_home_pose, on_exit=[load_controller])),
         RegisterEventHandler(OnProcessExit(target_action=load_controller, on_exit=[swap_controllers])),
-        RegisterEventHandler(OnProcessExit(target_action=swap_controllers, on_exit=[enable_servo])),
     ])

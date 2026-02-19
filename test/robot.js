@@ -1,6 +1,12 @@
 import { ensureVector3 } from "../dist/linAlg.js";
 import * as ROSLIB from "roslib";
 
+const SERVO_COMMAND_TYPE = {
+  JOINT_JOG: 0,
+  TWIST: 1,
+  POSE: 2,
+};
+
 /**
  * A class representing a robot connecting via ROS
  */
@@ -13,6 +19,7 @@ export class Robot {
 
   constructor(ros) {
     this.ros = ros;
+    this.servoReady = false;
     this.twistTopic = new ROSLIB.Topic({
       ros: this.ros,
       //name: "/threedmouse/twist",
@@ -36,6 +43,98 @@ export class Robot {
       name: "/threedmouse/button_change",
       messageType: "std_msgs/msg/String",
     });
+
+    this.switchCommandTypeService = new ROSLIB.Service({
+      ros: this.ros,
+      name: "/servo_node/switch_command_type",
+      serviceType: "moveit_msgs/srv/ServoCommandType",
+    });
+    this.pauseServoService = new ROSLIB.Service({
+      ros: this.ros,
+      name: "/servo_node/pause_servo",
+      serviceType: "std_srvs/srv/SetBool",
+    });
+    this.startServoService = new ROSLIB.Service({
+      ros: this.ros,
+      name: "/servo_node/start_servo",
+      serviceType: "std_srvs/srv/Trigger",
+    });
+  }
+
+  _callService(service, request, timeoutMs = 4000) {
+    return new Promise((resolve, reject) => {
+      let done = false;
+      const timer = setTimeout(() => {
+        if (!done) {
+          done = true;
+          reject(new Error(`Service call timeout: ${service.name}`));
+        }
+      }, timeoutMs);
+      service.callService(
+        request,
+        (result) => {
+          if (done) return;
+          done = true;
+          clearTimeout(timer);
+          resolve(result);
+        },
+        (error) => {
+          if (done) return;
+          done = true;
+          clearTimeout(timer);
+          reject(new Error(`Service call failed: ${service.name}: ${error}`));
+        },
+      );
+    });
+  }
+
+  async configureServoForTwist() {
+    const warnings = [];
+    try {
+      const switchResult = await this._callService(
+        this.switchCommandTypeService,
+        { command_type: SERVO_COMMAND_TYPE.TWIST },
+      );
+      if (!switchResult || switchResult.success !== true) {
+        warnings.push("switch_command_type returned unsuccessful response");
+      }
+    } catch (error) {
+      // Expected on some distros (e.g. Humble). Jazzy exposes this service.
+      // Keep this silent and rely on start/unpause fallback below.
+    }
+
+    let started = false;
+
+    try {
+      const startResult = await this._callService(this.startServoService, {});
+      started = !!startResult && startResult.success === true;
+      if (!started) {
+        warnings.push("start_servo returned unsuccessful response");
+      }
+    } catch (error) {
+      warnings.push("start_servo unavailable");
+    }
+
+    if (!started) {
+      // Jazzy exposes pause_servo(SetBool). Some setups may have different types;
+      // ignore failures and continue with best effort.
+      try {
+        const pauseResult = await this._callService(
+          this.pauseServoService,
+          { data: false },
+        );
+        started = !!pauseResult && pauseResult.success === true;
+        if (!started) {
+          warnings.push("pause_servo returned unsuccessful response");
+        }
+      } catch (error) {
+        warnings.push("pause_servo unavailable");
+      }
+    }
+
+    // Keep cross-distro behavior tolerant: Humble/Jazzy expose different services.
+    this.servoReady = true;
+    return { warnings };
   }
 
   /**
@@ -46,6 +145,9 @@ export class Robot {
    */
 
   move(twist, frame = "base_link", time = null) {
+    if (!this.servoReady) {
+      return;
+    }
     let [linear, angular] = [ensureVector3(twist[0]), ensureVector3(twist[1])];
     let linearValues = {
       x: linear.x,

@@ -35,10 +35,16 @@ You can test out the twist visualization using `viz_test.html` by opening `http:
 
 #### Testing with a Simulated UR5
 
-The easiest path is now Docker Compose (no ROS install required on host):
+The easiest path to try out the libary with a simulated robot is the included Docker Compose. No ROS installation is required on the host.
 
 ```bash
 docker compose up --build sim web
+```
+
+By default, this will use ROS Jazzy. To run against a different ROS distro image (for example Humble), set `ROS_DISTRO` when building/running:
+
+```bash
+ROS_DISTRO=humble docker compose up --build sim web
 ```
 
 Then open `http://localhost:8000/test` in Chrome and connect the device.

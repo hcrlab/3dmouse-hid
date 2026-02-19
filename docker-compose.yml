@@ -3,6 +3,8 @@ services:
     build:
       context: .
       dockerfile: docker/ros/Dockerfile
+      args:
+        ROS_DISTRO: ${ROS_DISTRO:-jazzy}
     network_mode: host
     environment:
       ROS_DOMAIN_ID: "0"
