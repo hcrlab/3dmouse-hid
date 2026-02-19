@@ -21,7 +21,7 @@ And run `sudo udevadm control --reload-rules && sudo udevadm trigger`
 
 On other systems, this is not necessary.
 
-### Running the Included Demos
+## Included Demos
 
 No build steps are required to run our included demos. Simply run a server using:
 
@@ -29,11 +29,11 @@ No build steps are required to run our included demos. Simply run a server using
 
 Open localhost:8000/test in Chrome. Note WebHID is typically only available in HTTPS contexts.
 
-#### Playing with the Visualization and Filters
+### Interactive Visualization and Filters
 
 You can test out the twist visualization using `viz_test.html` by opening `http://localhost:8000/test/viz_test.html`.
 
-#### Testing with a Simulated UR5
+### Simulated UR5
 
 The easiest path to try out the libary with a simulated robot is the included Docker Compose. No ROS installation is required on the host.
 
@@ -53,7 +53,8 @@ Notes:
 - This setup is currently Linux-oriented because ROS 2 discovery between containers is configured with `network_mode: host`.
 - `sim` serves rosbridge on `ws://127.0.0.1:9090`, which matches the default in `test/robot.js`.
 
-##### Full Simulation Installation
+<details>
+<summary><strong>Full Simulation Installation (Advanced)</strong></summary>
 
 We include a ROS2 Humble robot simulation to enable testing without a robot. You will need to install various UR ROS2 packages to use it:
 
@@ -69,6 +70,27 @@ This launch runs headless by default. [MoveIt 2 Servo](https://moveit.picknik.ai
 
 Now you should be able to open `http://localhost:8000/test/` and follow the interface instructions to teleoperate the simulated robot.
 
-### Debugging WebHID Issues
+</details>
+
+## Debugging WebHID Issues
 
 Try using nondebug's [WebHID Explorer](https://nondebug.github.io/webhid-explorer/) to connect to the device. If the connection fails, take a look at [chrome://device-log/](chrome://device-log/) to see why.
+
+## Citation
+
+If you use this work, please cite:
+
+```bibtex
+@inproceedings{dhat2024mice,
+  author = {Dhat, Varad and Walker, Nick and Cakmak, Maya},
+  title = {Using 3D Mice to Control Robot Manipulators},
+  year = {2024},
+  month = mar,
+  booktitle = {ACM/IEEE International Conference on Human-Robot Interaction (HRI)},
+  location = {Boulder, CO, USA},
+  wwwtype = {conference},
+  wwwpdf = {https://hcrlab.cs.washington.edu/assets/pdfs/2024/dhat2024using.pdf},
+  wwwcode = {https://github.com/hcrlab/3dmouse-hid},
+  doi = {10.1145/3610977.3637486}
+}
+```

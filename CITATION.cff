@@ -1,0 +1,27 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it as below."
+type: software
+authors:
+  - family-names: Dhat
+    given-names: Varad
+  - family-names: Walker
+    given-names: Nick
+  - family-names: Cakmak
+    given-names: Maya
+preferred-citation:
+  type: conference-paper
+  authors:
+    - family-names: Dhat
+      given-names: Varad
+    - family-names: Walker
+      given-names: Nick
+    - family-names: Cakmak
+      given-names: Maya
+  title: "Using 3D Mice to Control Robot Manipulators"
+  year: 2024
+  month: 3
+  collection-title: "ACM/IEEE International Conference on Human-Robot Interaction (HRI)"
+  location:
+    name: "Boulder, CO, USA"
+  doi: 10.1145/3610977.3637486
+  url: "https://hcrlab.cs.washington.edu/assets/pdfs/2024/dhat2024using.pdf"
