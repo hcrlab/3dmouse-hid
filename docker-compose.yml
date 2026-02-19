@@ -1,0 +1,28 @@
+services:
+  sim:
+    build:
+      context: .
+      dockerfile: docker/ros/Dockerfile
+    network_mode: host
+    environment:
+      ROS_DOMAIN_ID: "0"
+    working_dir: /workspace/test/ros
+    volumes:
+      - .:/workspace
+    command: >
+      ros2 launch ur_teleop_sim.launch.py
+      start_rosbridge:=true
+      gazebo_gui:=false
+
+  web:
+    image: node:20-bookworm-slim
+    user: "${UID:-1000}:${GID:-1000}"
+    environment:
+      HOME: /tmp
+      NPM_CONFIG_CACHE: /tmp/.npm
+    working_dir: /workspace
+    volumes:
+      - .:/workspace
+    command: sh -lc "npm ci && npm run test"
+    ports:
+      - "8000:8000"

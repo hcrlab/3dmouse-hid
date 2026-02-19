@@ -35,6 +35,20 @@ You can test out the twist visualization using `viz_test.html` by opening `http:
 
 #### Testing with a Simulated UR5
 
+The easiest path is now Docker Compose (no ROS install required on host):
+
+```bash
+docker compose up --build sim web
+```
+
+Then open `http://localhost:8000/test` in Chrome and connect the device.
+
+Notes:
+- This setup is currently Linux-oriented because ROS 2 discovery between containers is configured with `network_mode: host`.
+- `sim` serves rosbridge on `ws://127.0.0.1:9090`, which matches the default in `test/robot.js`.
+
+##### Full Simulation Installation
+
 We include a ROS2 Humble robot simulation to enable testing without a robot. You will need to install various UR ROS2 packages to use it:
 
     sudo apt install ros-humble-ur-description ros-humble-controller-manager ros-humble-ur-moveit-config ros-humble-ur-simulation-gz ros-humble-ros-gz-bridge ros-humble-ros-gz-image ros-humble-rosbridge-suite ros-humble-ros2-control ros-humble-position-controllers ros-humble-image-transport ros-humble-image-transport-plugins
