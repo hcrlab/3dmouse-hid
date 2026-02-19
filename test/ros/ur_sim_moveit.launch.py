@@ -36,7 +36,6 @@ from launch_ros.substitutions import FindPackageShare
 
 
 def launch_setup(context, *args, **kwargs):
-
     # Initialize Arguments
     ur_type = LaunchConfiguration("ur_type")
     safety_limits = LaunchConfiguration("safety_limits")
@@ -48,10 +47,12 @@ def launch_setup(context, *args, **kwargs):
     moveit_config_package = LaunchConfiguration("moveit_config_package")
     moveit_config_file = LaunchConfiguration("moveit_config_file")
     prefix = LaunchConfiguration("prefix")
+    gazebo_gui = LaunchConfiguration("gazebo_gui")
+    world_file = LaunchConfiguration("world_file")
 
     ur_control_launch = IncludeLaunchDescription(
         PythonLaunchDescriptionSource(
-            ["ur_sim_control.launch.py"]
+            [FindPackageShare("ur_simulation_gz"), "/launch", "/ur_sim_control.launch.py"]
         ),
         launch_arguments={
             "ur_type": ur_type,
@@ -62,6 +63,8 @@ def launch_setup(context, *args, **kwargs):
             "description_file": description_file,
             "prefix": prefix,
             "launch_rviz": "false",
+            "gazebo_gui": gazebo_gui,
+            "world_file": world_file,
         }.items(),
     )
 
@@ -78,8 +81,8 @@ def launch_setup(context, *args, **kwargs):
             "moveit_config_file": moveit_config_file,
             "prefix": prefix,
             "use_sim_time": "true",
-            "launch_rviz": "true",
-            "use_fake_hardware" : "true"
+            "launch_rviz": "false",
+            "use_fake_hardware": "true",
         }.items(),
     )
 
@@ -113,7 +116,7 @@ def generate_launch_description():
     declared_arguments.append(
         DeclareLaunchArgument(
             "runtime_config_package",
-            default_value="ur_simulation_gazebo",
+            default_value="ur_simulation_gz",
             description='Package with the controller\'s configuration in "config" folder. \
         Usually the argument is not set, it enables use of a custom setup.',
         )
@@ -162,6 +165,20 @@ def generate_launch_description():
             description="Prefix of the joint names, useful for \
         multi-robot setup. If changed than also joint names in the controllers' configuration \
         have to be updated.",
+        )
+    )
+    declared_arguments.append(
+        DeclareLaunchArgument(
+            "gazebo_gui",
+            default_value="false",
+            description="Start Gazebo with the GUI enabled.",
+        )
+    )
+    declared_arguments.append(
+        DeclareLaunchArgument(
+            "world_file",
+            default_value="camera_world.sdf",
+            description="SDF world file passed to ur_simulation_gz.",
         )
     )
 

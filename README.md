@@ -10,9 +10,10 @@ We have tested this code under Ubuntu 22.04. Note that WebHID is only [supported
 
 ### Connecting a 3D Mouse
 
-Using (Ubuntu) Linux, in order to get access from user space, add the following, using the USB Vendor ID returned from `lsusb` to a udev rules file (e.g. `/etc/udev/rules/50-3d-mouse.rules`):
+When using (Ubuntu) Linux, you need to give your user permission to access the device. Add a udev rule using the USB Vendor ID returned from `lsusb` (e.g. `/etc/udev/rules.d/50-3d-mouse.rules`):
 
 ```
+# Check the Vendor ID using `lsusb`! See the full set of possible values in `dist/deviceSpecs.js`
 SUBSYSTEM=="hidraw", ATTRS{idVendor}=="046d", MODE:="0666", GROUP="input"
 ```
 
@@ -36,13 +37,13 @@ You can test out the twist visualization using `viz_test.html` by opening `http:
 
 We include a ROS2 Humble robot simulation to enable testing without a robot. You will need to install various UR ROS2 packages to use it:
 
-    sudo apt install ros-humble-ur-description ros-humble-controller-manager ros-humble-ur-moveit-config ros-humble-gazebo-ros-pkgs ros-humble-rosbridge-suite ros-humble-ros2-control ros-humble-position-controllers
+    sudo apt install ros-humble-ur-description ros-humble-controller-manager ros-humble-ur-moveit-config ros-humble-ur-simulation-gz ros-humble-ros-gz-bridge ros-humble-ros-gz-image ros-humble-rosbridge-suite ros-humble-ros2-control ros-humble-position-controllers ros-humble-image-transport ros-humble-image-transport-plugins
 
 Our main launch file calls launch files [created by Universal Robotics](https://github.com/UniversalRobots/Universal_Robots_ROS2_Gazebo_Simulation) for placing their robot model in a Gazebo simulation, and also homes the robot and configures camera views:
 
     cd 3dmouse-hid/test/ros && ros2 launch ur_teleop_sim.launch.py
 
-You should see two instances of RViz launch (which you may close). [MoveIt 2 Servo](https://moveit.picknik.ai/humble/doc/examples/realtime_servo/realtime_servo_tutorial.html), the package which provides the end-effector twist controller, will be initialized and activated in the final step of the launch file, after which you can confirm that servo is running:
+This launch runs headless by default. [MoveIt 2 Servo](https://moveit.picknik.ai/humble/doc/examples/realtime_servo/realtime_servo_tutorial.html), the package which provides the end-effector twist controller, is initialized and activated in the final step of the launch file, after which you can confirm that servo is running:
 
     ros2 topic pub /servo_node/delta_twist_cmds geometry_msgs/msg/TwistStamped "{ header: { stamp: 'now', 'frame_id': 'tool0' },  twist: {linear: {x: -0.1}, angular: {  }}}" -r 10
 

@@ -1,4 +1,5 @@
 import { ensureVector3 } from "../dist/linAlg.js";
+import * as ROSLIB from "roslib";
 
 /**
  * A class representing a robot connecting via ROS
@@ -58,31 +59,30 @@ export class Robot {
       z: angular.z,
     };
 
-    const twistMsg = new ROSLIB.Message({
+    if (!time) {
+      time = Date.now();
+    }
+    const twistMsg = {
+      header: {
+        stamp: {
+          sec: Math.floor(time / 1000),
+          nanosec: (time % 1000) * 1e6,
+        },
+        frame_id: frame,
+      },
       twist: {
         linear: linearValues,
         angular: angularValues,
       },
-    });
-
-    if (!time) {
-      time = Date.now();
-    }
-    twistMsg.header = new ROSLIB.Message({
-      stamp: {
-        sec: Math.floor(time / 1000),
-        nanosec: (time % 1000) * 1e6,
-      },
-      frame_id: frame,
-    });
+    };
     this.twistTopic.publish(twistMsg);
   }
 
   forwardButtonStates(states) {
-    this.buttonsTopic.publish(new ROSLIB.Message({ data: JSON.stringify(states) }));
+    this.buttonsTopic.publish({ data: JSON.stringify(states) });
   }
   forwardButtonChange(name, state) {
-    this.buttonChangeTopic.publish(new ROSLIB.Message({ data: `${name},${state}`}));
+    this.buttonChangeTopic.publish({ data: `${name},${state}` });
   }
 
 }
@@ -116,19 +116,32 @@ export function initializeRos(host="ws://127.0.0.1:9090") {
  */
 
 export function subscribeToCameraTopic(ros, topicName, element) {
+  const isCompressedTopic = topicName.endsWith("/compressed");
   const imageTopic = new ROSLIB.Topic({
     ros: ros,
     name: topicName,
-    messageType: "sensor_msgs/msg/Image",
+    messageType: isCompressedTopic
+      ? "sensor_msgs/msg/CompressedImage"
+      : "sensor_msgs/msg/Image",
+    compression: isCompressedTopic ? "none" : "png",
+    queue_length: 1,
   });
   let ctx = element.getContext("2d");
+
   imageTopic.subscribe(function (message) {
-    element.width = message.width;
-    element.height = message.height;
-    let imageData = ctx.createImageData(message.width, message.height);
-    imageData = rgb8ImageToImageData(message, imageData);
-    // Iterate through every pixel
-    ctx.putImageData(imageData, 0, 0);
+    try {
+      if (isCompressedTopic) {
+        compressedImageToCanvas(message, element, ctx);
+      } else {
+        element.width = message.width;
+        element.height = message.height;
+        let imageData = ctx.createImageData(message.width, message.height);
+        imageData = rgb8ImageToImageData(message, imageData);
+        ctx.putImageData(imageData, 0, 0);
+      }
+    } catch (error) {
+      console.error(`Camera decode failed for ${topicName}:`, error, message);
+    }
   });
 }
 
@@ -140,11 +153,19 @@ export function subscribeToCameraTopic(ros, topicName, element) {
  */
 
 function rgb8ImageToImageData(msg, outData) {
-  const raw = atob(msg.data);
-  const array = new Uint8Array(new ArrayBuffer(raw.length));
-
-  for (let i = 0; i < raw.length; i++) {
-    array[i] = raw.charCodeAt(i);
+  let array;
+  if (typeof msg.data === "string") {
+    const raw = atob(msg.data);
+    array = new Uint8Array(new ArrayBuffer(raw.length));
+    for (let i = 0; i < raw.length; i++) {
+      array[i] = raw.charCodeAt(i);
+    }
+  } else if (Array.isArray(msg.data)) {
+    array = Uint8Array.from(msg.data);
+  } else if (msg.data instanceof Uint8Array) {
+    array = msg.data;
+  } else {
+    throw new Error(`Unsupported image data type: ${typeof msg.data}`);
   }
 
   for (let i = 0; i < msg.width * msg.height; i++) {
@@ -155,4 +176,16 @@ function rgb8ImageToImageData(msg, outData) {
   }
 
   return outData;
+}
+
+function compressedImageToCanvas(msg, element, ctx) {
+  const format = String(msg.format || "").toLowerCase();
+  const mimeType = format.includes("png") ? "image/png" : "image/jpeg";
+  const image = new Image();
+  image.onload = () => {
+    element.width = image.width;
+    element.height = image.height;
+    ctx.drawImage(image, 0, 0);
+  };
+  image.src = `data:${mimeType};base64,${msg.data}`;
 }
