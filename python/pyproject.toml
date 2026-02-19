@@ -1,0 +1,15 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "threed-mouse"
+version = "0.9.1"
+requires-python = ">=3.10"
+dependencies = [
+    "hid",
+    "numpy"
+]
+
+[tool.setuptools.packages.find]
+where = ["."]

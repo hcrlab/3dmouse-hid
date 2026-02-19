@@ -1,7 +1,7 @@
 from typing import Union, Set, Dict
 import time
 
-from srl.spacemouse.device import DEVICE_SPECS
+from threed_mouse.device import DEVICE_SPECS
 
 
 DEVICE_BUTTON_STRUCT_INDICES: Dict[str, Dict[str, int]] = {}
