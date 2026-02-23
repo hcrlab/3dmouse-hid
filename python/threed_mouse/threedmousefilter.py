@@ -19,7 +19,7 @@ def apply_cubic_deadband(values, deadband, max_value=1.0, weight=.4):
     values[~to_clip] = (cubic(values[~to_clip], weight) - cubic(deadband, weight) * (np.abs(values[~to_clip]) / values[~to_clip])) / (max_value - cubic(deadband, weight))
 
 
-class SpaceMouseFilter:
+class ThreeDMouseFilter:
 
     def __init__(self,
         smoothing_factor,

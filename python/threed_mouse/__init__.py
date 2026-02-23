@@ -1,1 +1,1 @@
-from threed_mouse.spacemouse import SpaceMouse
+from threed_mouse.threedmouse import ThreeDMouse

@@ -2,8 +2,8 @@ from typing import Union, Set, Dict, Sequence
 import time
 import numpy as np
 
-class SpaceMouseButtonDebouncer:
-    """ Limit the number of times a change in state of the SpaceMouse's buttons is reported
+class ButtonDebouncer:
+    """ Limit the number of times a change in state of bit-state buttons is reported
         API modeled on lodash's debounce: https://lodash.com/docs#debounce
     """
     def __init__(self, name_to_index: Dict[str, int], leading: Union[bool, Set[str]], trailing: Union[bool, Set[str]], max_wait: float) -> None:

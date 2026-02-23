@@ -6,7 +6,7 @@ from pyspacemouse import DeviceInfo
 
 
 @dataclass(frozen=True, slots=True)
-class SpaceMouseData:
+class ThreeDMouseData:
     t: float
     xyz: np.ndarray
     rpy: np.ndarray

@@ -7,7 +7,7 @@ import numpy as np
 import pyspacemouse
 from pyspacemouse import DeviceInfo
 
-from threed_mouse.device import SpaceMouseData
+from threed_mouse.device import ThreeDMouseData
 
 logger = logging.getLogger(__name__)
 
@@ -15,7 +15,7 @@ logger = logging.getLogger(__name__)
 TELEOP_CONTROL_RATE = 20
 
 
-class SpaceMouse:
+class ThreeDMouse:
     def __init__(
         self,
         spec: Optional[DeviceInfo] = None,
@@ -34,7 +34,7 @@ class SpaceMouse:
         self._rotation_callback = None
         self._unexpected_close_callback = None
 
-        self._control: Optional[SpaceMouseData] = None
+        self._control: Optional[ThreeDMouseData] = None
         self._control_lock = threading.Lock()
         self._frame_rotation_linear = np.eye(3, dtype=float)
         self._frame_rotation_angular = np.eye(3, dtype=float)
@@ -109,7 +109,7 @@ class SpaceMouse:
             self._frame_rotation_linear = r_linear
             self._frame_rotation_angular = r_angular
 
-    def get_controller_state(self) -> Optional[SpaceMouseData]:
+    def get_controller_state(self) -> Optional[ThreeDMouseData]:
         with self._control_lock:
             control = self._control
         if control is None:
@@ -124,7 +124,7 @@ class SpaceMouse:
             self._rotation_callback(rot)
 
         buttons = np.asarray(control.buttons, dtype=int).copy()
-        return SpaceMouseData(control.t, dpos, rot, buttons)
+        return ThreeDMouseData(control.t, dpos, rot, buttons)
 
     @property
     def is_running(self) -> bool:
@@ -175,7 +175,7 @@ class SpaceMouse:
 
         # Initialize with a neutral state so consumers can poll immediately.
         with self._control_lock:
-            self._control = SpaceMouseData(
+            self._control = ThreeDMouseData(
                 -1.0,
                 np.array((0.0, 0.0, 0.0), dtype=float),
                 np.array((0.0, 0.0, 0.0), dtype=float),
@@ -186,7 +186,7 @@ class SpaceMouse:
             try:
                 state = self.device.read()
             except Exception:
-                logger.warning("Lost connection to SpaceMouse. Closing device.")
+                logger.warning("Lost connection to device. Closing device.")
                 if self.device is not None:
                     self.device.close()
                     self.device = None
@@ -202,7 +202,7 @@ class SpaceMouse:
                     r_angular = self._frame_rotation_angular.copy()
                 xyz = r_linear @ np.array((state.x, state.y, state.z), dtype=float)
                 rpy = r_angular @ np.array((state.roll, state.pitch, state.yaw), dtype=float)
-                control = SpaceMouseData(
+                control = ThreeDMouseData(
                     state.t,
                     xyz,
                     rpy,
