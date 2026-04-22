@@ -5,11 +5,50 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "threed-mouse"
 version = "0.9.1"
-requires-python = ">=3.10"
+description = "3D mouse input utilities for Python, including teleoperation helpers."
+readme = "README.md"
+requires-python = ">=3.10,<3.14"
+license = "BSD-2-Clause"
+authors = [
+    { name = "Varad Dhat" },
+    { name = "Nick Walker" },
+]
+keywords = ["3d mouse", "spacemouse", "hid", "robotics", "teleoperation"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Science/Research",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Scientific/Engineering",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+]
 dependencies = [
     "numpy",
     "pyspacemouse>=2.0.0",
 ]
 
+[project.urls]
+Homepage = "https://github.com/hcrlab/3dmouse-hid"
+Repository = "https://github.com/hcrlab/3dmouse-hid"
+Issues = "https://github.com/hcrlab/3dmouse-hid/issues"
+
+[dependency-groups]
+teleop = [
+    "robot-descriptions",
+    "scikit-robot>=0.3.2",
+    "viser>=1.0.21",
+    "yourdfpy>=0.0.60",
+    "pin",
+    "pin-pink",
+    "qpsolvers[clarabel,osqp,quadprog]",
+    "xacrodoc"
+]
+
 [tool.setuptools.packages.find]
 where = ["."]
+include = ["threed_mouse*"]
