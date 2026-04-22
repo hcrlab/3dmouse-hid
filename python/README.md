@@ -1,11 +1,11 @@
-# threed-mouse
+# threedmouse
 
 Python utilities for working with 3D mice, including SpaceMouse-style devices and teleoperation helpers for robotics workflows.
 
 ## Install
 
 ```bash
-pip install threed-mouse
+pip install threedmouse
 ```
 
 ## Basic usage
